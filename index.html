@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casiana Nails — Programări</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="lightbox" id="lightbox">
+  <span class="lightbox-close" id="lbClose">&times;</span>
+  <img id="lbImg" src="" alt="">
+</div>
+
+<header>
+  <nav class="wrap">
+    <div class="brand"><img src="images/logo.png" alt="Casiana Nails"><span>CASIANA</span></div>
+    <div class="navlinks" id="navlinks">
+      <a href="#acasa">Acasă</a>
+      <a href="#servicii">Servicii</a>
+      <a href="#galerie">Galerie</a>
+      <a href="#program">Program</a>
+      <a href="#programare" class="nav-cta">Programează-te</a>
+    </div>
+    <button class="burger" id="burger"><span></span><span></span><span></span></button>
+  </nav>
+</header>
+
+<section class="hero" id="acasa">
+  <div class="ring-deco"></div>
+  <div class="ring-deco two"></div>
+  <div class="wrap hero-inner">
+    <img class="hero-logo" src="images/logo.png" alt="Casiana Nails">
+    <div class="eyebrow">Salon de manichiură &amp; pedichiură</div>
+    <h1>CASIANA&nbsp;NAILS</h1>
+    <p class="sub">Unghii lucrate cu migală, într-un decor discret și elegant</p>
+    <div class="btnrow">
+      <a href="#programare" class="btn btn-gold">Programează-te acum</a>
+      <a href="#galerie" class="btn btn-outline">Vezi lucrări</a>
+    </div>
+    <div class="hero-meta">
+      <div><div class="num">6</div><div class="lab">Servicii</div></div>
+      <div><div class="num">10–17</div><div class="lab">Luni – Vineri</div></div>
+      <div><div class="num">100%</div><div class="lab">Materiale premium</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec services" id="servicii">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Prețuri &amp; durată</div>
+      <h2>Serviciile noastre</h2>
+      <div class="divider"></div>
+      <p>Fiecare lucrare este realizată integral cu produse de calitate, adaptată formei și dorinței fiecărei cliente.</p>
+    </div>
+    <div class="svc-grid reveal" id="svcGrid"></div>
+  </div>
+</section>
+
+<section class="sec" id="galerie">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Portofoliu</div>
+      <h2>Exemple de lucrări</h2>
+      <div class="divider"></div>
+      <p>O selecție din lucrările realizate în salon — pentru inspirație înainte de programare.</p>
+    </div>
+    <div class="gal-grid reveal" id="galGrid"></div>
+  </div>
+</section>
+
+<section class="sec booking" id="programare">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Rezervă-ți locul</div>
+      <h2>Programare online</h2>
+      <div class="divider"></div>
+      <p>Alege serviciul, data și ora dorită — în doar câțiva pași.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step-pill active" data-step="1"><span class="n">1</span>Serviciu</div>
+      <div class="step-pill" data-step="2"><span class="n">2</span>Dată &amp; oră</div>
+      <div class="step-pill" data-step="3"><span class="n">3</span>Datele tale</div>
+      <div class="step-pill" data-step="4"><span class="n">4</span>Confirmare</div>
+    </div>
+
+    <div class="booking-panel">
+
+      <div class="b-step active" id="step1">
+        <div class="svc-choice-grid" id="svcChoiceGrid"></div>
+        <div class="btn-row-step">
+          <span></span>
+          <button class="btn btn-solid" id="toStep2" disabled>Continuă →</button>
+        </div>
+      </div>
+
+      <div class="b-step" id="step2">
+        <div class="cal-head">
+          <h4 id="calMonthLabel"></h4>
+          <div class="cal-nav">
+            <button id="calPrev">‹</button>
+            <button id="calNext">›</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="slots-wrap">
+          <div class="lab">Ore disponibile</div>
+          <div class="slot-grid" id="slotGrid"><div class="no-slots">Alege mai întâi o dată din calendar.</div></div>
+        </div>
+        <div class="btn-row-step">
+          <button class="btn btn-ghost" data-back="1">← Înapoi</button>
+          <button class="btn btn-solid" id="toStep3" disabled>Continuă →</button>
+        </div>
+      </div>
+
+      <div class="b-step" id="step3">
+        <div class="form-grid">
+          <div class="field"><label>Nume &amp; prenume</label><input type="text" id="fName" placeholder="Ex: Maria Popescu"></div>
+          <div class="field"><label>Telefon</label><input type="tel" id="fPhone" placeholder="07xx xxx xxx"></div>
+          <div class="field full"><label>Email (opțional)</label><input type="email" id="fEmail" placeholder="nume@email.com"></div>
+          <div class="field full"><label>Observații (opțional)</label><textarea id="fNote" placeholder="Ex: model dorit, alergii, etc."></textarea></div>
+        </div>
+        <div class="btn-row-step">
+          <button class="btn btn-ghost" data-back="2">← Înapoi</button>
+          <button class="btn btn-solid" id="toStep4">Continuă →</button>
+        </div>
+      </div>
+
+      <div class="b-step" id="step4">
+        <div class="summary-card" id="summaryCard"></div>
+        <div class="btn-row-step">
+          <button class="btn btn-ghost" data-back="3">← Înapoi</button>
+          <button class="btn btn-solid" id="confirmBtn">Confirmă programarea</button>
+        </div>
+      </div>
+
+      <div class="b-step" id="step5">
+        <div class="confirmed">
+          <div class="ico">✓</div>
+          <h3>Programare înregistrată</h3>
+          <p id="confirmText">Te așteptăm la salon! Vei fi contactată telefonic pentru confirmare finală.</p>
+          <button class="btn btn-solid" id="newBooking">Fă o nouă programare</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="sec hours-sec" id="program">
+  <div class="wrap hours-grid">
+    <div class="reveal">
+      <div class="eyebrow">Program</div>
+      <h2 style="margin:10px 0 26px; font-size:34px;">Orar de funcționare</h2>
+      <ul class="hours-list">
+        <li><span>Luni – Vineri</span><span>10:00 – 17:00</span></li>
+        <li><span>Sâmbătă – Duminică</span><span>Închis</span></li>
+        <li><span>Ultima programare</span><span>17:00</span></li>
+        <li><span>Manichiură</span><span>~1h 30m</span></li>
+        <li><span>Pachet Pedichiură + Manichiură</span><span>~4h</span></li>
+      </ul>
+    </div>
+    <div class="contact-block reveal">
+      <div class="eyebrow">Contact</div>
+      <h3 style="margin-top:10px;">Hai să vorbim</h3>
+      <p>Pentru întrebări sau modificări ale programării, ne găsești pe oricare dintre canalele de mai jos.</p>
+      <ul class="contact-list">
+        <li><b>Tel:</b> 07xx xxx xxx</li>
+        <li><b>Instagram:</b> @casiana.nails</li>
+        <li><b>Adresă:</b> completează adresa salonului</li>
+      </ul>
+      <a href="#programare" class="btn btn-gold" style="margin-top:20px;">Programează-te</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="justify-content:center;"><img src="images/logo.png" alt="Casiana Nails" style="height:40px;"><span>CASIANA NAILS</span></div>
+    <div class="foot-line"></div>
+    <p>Manichiură · Pedichiură · Semipermanent · Gel</p>
+    <p class="foot-copy">© 2026 Casiana Nails. Toate drepturile rezervate.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
