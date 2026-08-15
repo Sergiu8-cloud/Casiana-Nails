@@ -21,7 +21,6 @@ const GALLERY = [
   {src:'images/gallery-10.jpg', tag:'Manichiură cu gel', cap:'Verde glossy'},
   {src:'images/gallery-11.jpg', tag:'Pedichiură semipermanentă', cap:'Taupe glossy'},
   {src:'images/gallery-12.jpg', tag:'Manichiură Slim', cap:'Ombré roz'},
-  {src:'images/gallery-13.jpg', tag:'Pachet Pedichiură + Manichiură', cap:'Marmură albă cu auriu'},
 ];
 
 const OPEN_HOUR = 10;          // 10:00 — prima programare
