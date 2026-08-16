@@ -23,9 +23,6 @@ const GALLERY = [
   {src:'images/gallery-12.jpg', tag:'Manichiură Slim', cap:'Ombré roz'},
 ];
 
-// URL-ul primit după ce publici scriptul Google Apps Script (Deploy > Web app)
-const SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxRfPr77PGBNSOIotaJ4--Grmeg2dja5oBWuQSzZ33SR5RA6dado-Hd2yZP0C6jSE_qvA/exec';
-
 const OPEN_HOUR = 10;          // 10:00 — prima programare
 const LAST_APPOINTMENT_HOUR = 17; // 17:00 — ultima programare (indiferent de durata serviciului)
 const SLOT_STEP = 30;          // minute
@@ -172,20 +169,6 @@ function renderCalendar(){
 document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
 document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
-/* preluare ore ocupate din Google Sheets prin JSONP (evită fetch, blocat de protecția anti-bot) */
-let jsonpCounter = 0;
-function jsonp(url){
-  return new Promise((resolve, reject)=>{
-    const cbName = 'jsonpCb' + (jsonpCounter++);
-    const script = document.createElement('script');
-    const cleanup = ()=>{ delete window[cbName]; script.remove(); };
-    window[cbName] = (data)=>{ cleanup(); resolve(data); };
-    script.onerror = ()=>{ cleanup(); reject(new Error('Nu s-au putut încărca orele.')); };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
-    document.body.appendChild(script);
-  });
-}
-
 const bookingsCache = {}; // dateISO -> [{ora, durata}]
 function dateToISO(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -202,7 +185,9 @@ async function renderSlots(){
   let bookings;
   try{
     if(!(dateISO in bookingsCache)){
-      const data = await jsonp(SHEET_WEBAPP_URL + '?action=sloturiOcupate&data=' + dateISO);
+      const res = await fetch('/api/slots?data=' + dateISO);
+      if(!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
       bookingsCache[dateISO] = data.bookings || [];
     }
     bookings = bookingsCache[dateISO];
@@ -285,33 +270,45 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   const dateISO = dateToISO(state.date); // YYYY-MM-DD (oră locală, nu UTC)
   const dateLabel = state.date.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long'});
 
-  const payload = JSON.stringify({
-    nume: name,
-    telefon: phone,
-    email: email,
-    observatii: note,
-    serviciu: state.service.name,
-    pret: state.service.priceLabel,
-    durata: state.service.duration,
-    data: dateISO,
-    ora: state.time,
-  });
+  try{
+    const res = await fetch('/api/book', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        nume: name,
+        telefon: phone,
+        email: email,
+        observatii: note,
+        serviciu: state.service.name,
+        pret: state.service.priceLabel,
+        durata: state.service.duration,
+        data: dateISO,
+        ora: state.time,
+      })
+    });
+    const result = await res.json();
 
-  // Trimitem printr-un formular ascuns (navigare reală către Google), nu fetch —
-  // fetch e blocat de protecția anti-bot a Google chiar și pentru utilizatori reali.
-  const form = document.getElementById('sheetForm');
-  form.action = SHEET_WEBAPP_URL;
-  document.getElementById('sheetPayload').value = payload;
-  form.submit();
-  delete bookingsCache[dateISO];
-
-  setTimeout(()=>{
-    document.getElementById('confirmText').textContent =
-      `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
+    if(!result.success){
+      alert(result.error || 'A apărut o eroare la salvarea programării. Încearcă din nou.');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirmă programarea';
+      renderSlots();
+      return;
+    }
+  } catch(err){
+    console.error('Eroare la trimiterea programării:', err);
+    alert('Nu am putut salva programarea — verifică conexiunea la internet și încearcă din nou.');
     confirmBtn.disabled = false;
     confirmBtn.textContent = 'Confirmă programarea';
-    goToStep(5);
-  }, 1200);
+    return;
+  }
+
+  delete bookingsCache[dateISO];
+  document.getElementById('confirmText').textContent =
+    `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = 'Confirmă programarea';
+  goToStep(5);
 });
 
 document.getElementById('newBooking').addEventListener('click', ()=>{
