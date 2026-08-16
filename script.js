@@ -1,11 +1,11 @@
 /* ---------------- DATA ---------------- */
 const SERVICES = [
-  {id:'clasica', name:'Manichiură clasică', price:100, priceLabel:'100 RON', duration:90, note:''},
-  {id:'semi', name:'Manichiură semipermanentă', price:170, priceLabel:'170 RON', duration:90, note:''},
-  {id:'gel', name:'Manichiură cu gel / întreținere', price:190, priceLabel:'190 RON', duration:90, note:'mărime 1/2 – 3/4'},
-  {id:'slim', name:'Manichiură Slim', price:220, priceLabel:'220 RON', duration:90, note:''},
-  {id:'pedi', name:'Pedichiură semipermanentă', price:170, priceLabel:'170 RON', duration:90, note:''},
-  {id:'pachet', name:'Pachet Pedichiură + Manichiură', price:270, priceLabel:'de la 270 RON', duration:240, note:'pedichiură + manichiura la alegere'},
+  {id:'clasica', name:'Manichiură clasică', price:100, priceLabel:'100 RON', duration:80, note:''},
+  {id:'semi', name:'Manichiură semipermanentă', price:170, priceLabel:'170 RON', duration:110, note:''},
+  {id:'gel', name:'Manichiură cu gel / întreținere', price:190, priceLabel:'190 RON', duration:130, note:'mărime 1/2 – 3/4'},
+  {id:'slim', name:'Manichiură Slim', price:220, priceLabel:'220 RON', duration:140, note:''},
+  {id:'pedi', name:'Pedichiură semipermanentă', price:170, priceLabel:'170 RON', duration:110, note:''},
+  {id:'pachet', name:'Pachet Pedichiură + Manichiură', price:270, priceLabel:'de la 340 RON', duration:250, note:'în funcție de tipul manichiurii', lastHour:15},
 ];
 
 const GALLERY = [
@@ -22,6 +22,9 @@ const GALLERY = [
   {src:'images/gallery-11.jpg', tag:'Pedichiură semipermanentă', cap:'Taupe glossy'},
   {src:'images/gallery-12.jpg', tag:'Manichiură Slim', cap:'Ombré roz'},
 ];
+
+// URL-ul primit după ce publici scriptul Google Apps Script (Deploy > Web app)
+const SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxRfPr77PGBNSOIotaJ4--Grmeg2dja5oBWuQSzZ33SR5RA6dado-Hd2yZP0C6jSE_qvA/exec';
 
 const OPEN_HOUR = 10;          // 10:00 — prima programare
 const LAST_APPOINTMENT_HOUR = 17; // 17:00 — ultima programare (indiferent de durata serviciului)
@@ -169,27 +172,63 @@ function renderCalendar(){
 document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
 document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
-/* deterministic pseudo-random "already booked" slots so demo feels real */
-function seededRand(seedStr){
-  let h = 0;
-  for(let i=0;i<seedStr.length;i++){ h = (h*31 + seedStr.charCodeAt(i)) >>> 0; }
-  return function(){ h = (h*1103515245 + 12345) >>> 0; return (h % 1000)/1000; };
+/* preluare ore ocupate din Google Sheets prin JSONP (evită fetch, blocat de protecția anti-bot) */
+let jsonpCounter = 0;
+function jsonp(url){
+  return new Promise((resolve, reject)=>{
+    const cbName = 'jsonpCb' + (jsonpCounter++);
+    const script = document.createElement('script');
+    const cleanup = ()=>{ delete window[cbName]; script.remove(); };
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    script.onerror = ()=>{ cleanup(); reject(new Error('Nu s-au putut încărca orele.')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    document.body.appendChild(script);
+  });
 }
 
-function renderSlots(){
+const bookingsCache = {}; // dateISO -> [{ora, durata}]
+function dateToISO(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function renderSlots(){
   const wrap = document.getElementById('slotGrid');
   wrap.innerHTML='';
   if(!state.date || !state.service){ wrap.innerHTML='<div class="no-slots">Alege mai întâi o dată din calendar.</div>'; return; }
-  const lastStartMinutes = LAST_APPOINTMENT_HOUR*60;
-  const startMinutes = OPEN_HOUR*60;
 
-  const rand = seededRand(state.date.toDateString()+state.service.id);
+  const dateISO = dateToISO(state.date);
+  wrap.innerHTML = '<div class="no-slots">Se încarcă orele...</div>';
+
+  let bookings;
+  try{
+    if(!(dateISO in bookingsCache)){
+      const data = await jsonp(SHEET_WEBAPP_URL + '?action=sloturiOcupate&data=' + dateISO);
+      bookingsCache[dateISO] = data.bookings || [];
+    }
+    bookings = bookingsCache[dateISO];
+  } catch(err){
+    console.error('Eroare la încărcarea orelor ocupate:', err);
+    wrap.innerHTML = '<div class="no-slots">Nu am putut încărca orele disponibile. Reîncearcă sau contactează-ne telefonic.</div>';
+    return;
+  }
+
+  wrap.innerHTML = '';
+  const lastStartMinutes = (state.service.lastHour || LAST_APPOINTMENT_HOUR)*60;
+  const startMinutes = OPEN_HOUR*60;
+  const newDuration = state.service.duration;
+
   let any=false;
   for(let m=startMinutes; m<=lastStartMinutes; m+=SLOT_STEP){
     const hh = String(Math.floor(m/60)).padStart(2,'0');
     const mm = String(m%60).padStart(2,'0');
     const label = `${hh}:${mm}`;
-    const taken = rand() < 0.22;
+    const newEnd = m + newDuration;
+    // ocupat dacă se suprapune cu orice programare existentă (indiferent de serviciu — un singur meșter)
+    const taken = bookings.some(b=>{
+      const bStart = timeToMinutesLocal(b.ora);
+      const bEnd = bStart + Number(b.durata);
+      return m < bEnd && newEnd > bStart;
+    });
     const el = document.createElement('div');
     el.className = 'slot' + (taken?' taken':'');
     el.textContent = label;
@@ -208,6 +247,11 @@ function renderSlots(){
   if(!any){ wrap.innerHTML='<div class="no-slots">Nu mai sunt ore libere în această zi — alege altă dată.</div>'; }
 }
 
+function timeToMinutesLocal(label){
+  const parts = String(label).split(':');
+  return Number(parts[0])*60 + Number(parts[1]);
+}
+
 /* step 4: summary */
 function renderSummary(){
   const card = document.getElementById('summaryCard');
@@ -223,18 +267,51 @@ function renderSummary(){
   `;
 }
 
-document.getElementById('confirmBtn').addEventListener('click', ()=>{
+document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('fName').value.trim();
   const phone = document.getElementById('fPhone').value.trim();
+  const email = document.getElementById('fEmail').value.trim();
+  const note = document.getElementById('fNote').value.trim();
   if(!name || !phone){
     goToStep(3);
     alert('Te rugăm completează numele și telefonul pentru a confirma programarea.');
     return;
   }
+
+  const confirmBtn = document.getElementById('confirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Se trimite...';
+
+  const dateISO = dateToISO(state.date); // YYYY-MM-DD (oră locală, nu UTC)
   const dateLabel = state.date.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long'});
-  document.getElementById('confirmText').textContent =
-    `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
-  goToStep(5);
+
+  const payload = JSON.stringify({
+    nume: name,
+    telefon: phone,
+    email: email,
+    observatii: note,
+    serviciu: state.service.name,
+    pret: state.service.priceLabel,
+    durata: state.service.duration,
+    data: dateISO,
+    ora: state.time,
+  });
+
+  // Trimitem printr-un formular ascuns (navigare reală către Google), nu fetch —
+  // fetch e blocat de protecția anti-bot a Google chiar și pentru utilizatori reali.
+  const form = document.getElementById('sheetForm');
+  form.action = SHEET_WEBAPP_URL;
+  document.getElementById('sheetPayload').value = payload;
+  form.submit();
+  delete bookingsCache[dateISO];
+
+  setTimeout(()=>{
+    document.getElementById('confirmText').textContent =
+      `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirmă programarea';
+    goToStep(5);
+  }, 1200);
 });
 
 document.getElementById('newBooking').addEventListener('click', ()=>{
