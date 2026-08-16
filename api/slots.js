@@ -15,6 +15,6 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ bookings });
   } catch (err) {
     console.error('Eroare la citirea programarilor:', err);
-    res.status(500).json({ error: 'Eroare la citirea programarilor.' });
+    res.status(500).json({ error: 'Eroare la citirea programarilor.', debug: err.message });
   }
 };
