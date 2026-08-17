@@ -1,6 +1,6 @@
 const { getAllBookings, appendBooking } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
-const { timeToMinutes, overlaps } = require('./_lib/time');
+const { timeToMinutes, overlaps, isWorkingDay } = require('./_lib/time');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,6 +12,11 @@ module.exports = async function handler(req, res) {
 
   if (!nume || !telefon || !serviciu || !durata || !data || !ora) {
     res.status(400).json({ success: false, error: 'Lipsesc campuri obligatorii.' });
+    return;
+  }
+
+  if (!isWorkingDay(data)) {
+    res.status(200).json({ success: false, error: 'Salonul este inchis duminica si luni. Alege alta zi.' });
     return;
   }
 

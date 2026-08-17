@@ -26,7 +26,7 @@ const GALLERY = [
 const OPEN_HOUR = 10;          // 10:00 — prima programare
 const LAST_APPOINTMENT_HOUR = 17; // 17:00 — ultima programare (indiferent de durata serviciului)
 const SLOT_STEP = 30;          // minute
-const WORKING_DAYS = [1,2,3,4,5]; // Luni(1) – Vineri(5); 0=Duminică, 6=Sâmbătă
+const WORKING_DAYS = [2,3,4,5,6]; // Marți(2) – Sâmbătă(6); 0=Duminică, 1=Luni — închis
 
 /* ---------------- RENDER SERVICES ---------------- */
 const svcIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`;
