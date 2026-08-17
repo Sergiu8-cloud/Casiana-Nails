@@ -121,7 +121,7 @@ function goToStep(n){
     p.classList.toggle('active', s===n);
     p.classList.toggle('done', s<n);
   });
-  if(n===2) renderCalendar();
+  if(n===2){ warmupSlots(); renderCalendar(); }
 }
 document.getElementById('toStep2').addEventListener('click', ()=>goToStep(2));
 document.getElementById('toStep3').addEventListener('click', ()=>goToStep(3));
@@ -174,16 +174,17 @@ function dateToISO(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-const SLOT_FETCH_TIMEOUT = 12000; // ms — prima cerere „rece" către funcția de pe server poate dura mult
-const SLOT_FETCH_RETRIES = 2;     // cererea care expiră pornește funcția; următoarea răspunde rapid
-let slotRequestId = 0;            // ca un răspuns întârziat să nu suprascrie ziua aleasă între timp
+// serverul răspunde normal în ~1s; dacă prima cerere se blochează, renunțăm repede și
+// reîncercăm — cererea abandonată tot pornește funcția, așa că a doua vine imediat
+const SLOT_FETCH_TIMEOUTS = [4000, 8000, 12000];
+let slotRequestId = 0; // ca un răspuns întârziat să nu suprascrie ziua aleasă între timp
 
 async function fetchBookings(dateISO, onRetry){
   let lastErr;
-  for(let attempt=0; attempt<=SLOT_FETCH_RETRIES; attempt++){
+  for(let attempt=0; attempt<SLOT_FETCH_TIMEOUTS.length; attempt++){
     if(attempt>0 && onRetry) onRetry(attempt);
     const ctrl = new AbortController();
-    const timer = setTimeout(()=>ctrl.abort(), SLOT_FETCH_TIMEOUT);
+    const timer = setTimeout(()=>ctrl.abort(), SLOT_FETCH_TIMEOUTS[attempt]);
     try{
       const res = await fetch('/api/slots?data=' + dateISO, {cache:'no-store', signal:ctrl.signal});
       if(!res.ok) throw new Error('status ' + res.status);
@@ -197,6 +198,25 @@ async function fetchBookings(dateISO, onRetry){
   }
   throw lastErr;
 }
+
+/* Pornim din timp cererea pentru prima zi lucrătoare, imediat ce secțiunea de programare
+   ajunge pe ecran: cât timp clienta alege serviciul și ziua, funcția de pe server e deja
+   pornită, iar orele apar instant în loc să se încarce abia la click. */
+let warmupPornit = false;
+function warmupSlots(){
+  if(warmupPornit) return;
+  warmupPornit = true;
+  const d = new Date(today);
+  while(!WORKING_DAYS.includes(d.getDay())) d.setDate(d.getDate()+1);
+  const iso = dateToISO(d);
+  if(iso in bookingsCache) return;
+  fetchBookings(iso).then(b=>{ if(!(iso in bookingsCache)) bookingsCache[iso] = b; }).catch(()=>{});
+}
+
+const warmupObserver = new IntersectionObserver((entries, obs)=>{
+  if(entries.some(e=>e.isIntersecting)){ warmupSlots(); obs.disconnect(); }
+}, {rootMargin:'400px'});
+warmupObserver.observe(document.getElementById('programare'));
 
 async function renderSlots(){
   const wrap = document.getElementById('slotGrid');
