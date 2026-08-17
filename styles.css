@@ -112,7 +112,7 @@ nav.wrap{
   margin-bottom:18px;
 }
 @media(max-width:480px){
-  .hero h1{ font-size:clamp(28px,8vw,40px); letter-spacing:4px; }
+  .hero h1{ font-size:clamp(32px,9vw,46px); letter-spacing:5px; }
 }
 .hero .sub{
   font-family:'Cormorant Garamond',serif; font-style:italic;
