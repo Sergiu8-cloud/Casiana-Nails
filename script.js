@@ -453,7 +453,7 @@ function puneOre(ore, primaLinie){
 
 async function incarcaOreAnulare(){
   const data = cData.value;
-  if(!data){ puneOre([], 'Alege întâi data'); return; }
+  if(!data){ puneOre([], 'Alege ora'); return; }
   puneOre([], 'Se încarcă...');
   try{
     const programari = await fetchBookings(data);
