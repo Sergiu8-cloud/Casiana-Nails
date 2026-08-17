@@ -202,10 +202,9 @@ async function renderSlots(){
   const startMinutes = OPEN_HOUR*60;
   const newDuration = state.service.duration;
 
-  // grila fixă din 30 în 30 minute + ora exactă la care se termină fiecare programare existentă
-  // (ex: o programare de 80 min începută la 10:00 se termină la 11:20 — o oferim ca opțiune, nu doar 11:00/11:30)
-  const candidateMinutes = new Set();
-  for(let m=startMinutes; m<=lastStartMinutes; m+=SLOT_STEP) candidateMinutes.add(m);
+  // se oferă doar ora de deschidere + ora exactă la care se termină fiecare programare existentă —
+  // nu grilă liberă din 30 în 30, ca să nu rămână goluri neutilizabile între programări
+  const candidateMinutes = new Set([startMinutes]);
   bookings.forEach(b=>{
     const end = timeToMinutesLocal(b.ora) + Number(b.durata);
     if(end>=startMinutes && end<=lastStartMinutes) candidateMinutes.add(end);
