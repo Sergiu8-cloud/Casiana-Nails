@@ -454,14 +454,14 @@ function puneOre(ore, primaLinie){
 async function incarcaOreAnulare(){
   const data = cData.value;
   if(!data){ puneOre([], 'Alege întâi data'); return; }
-  puneOre([], 'Se încarcă orele...');
+  puneOre([], 'Se încarcă...');
   try{
     const programari = await fetchBookings(data);
     const ore = programari.map(b=>b.ora).sort();
-    puneOre(ore, ore.length ? 'Alege ora' : 'Nicio programare în această zi');
+    puneOre(ore, ore.length ? 'Alege ora' : 'Nicio programare');
   }catch(err){
     console.error('Eroare la încărcarea orelor pentru anulare:', err);
-    puneOre([], 'Nu am putut încărca orele');
+    puneOre([], 'Eroare la încărcare');
   }
 }
 cData.addEventListener('change', incarcaOreAnulare);
