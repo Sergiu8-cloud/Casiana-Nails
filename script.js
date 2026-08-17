@@ -185,7 +185,7 @@ async function renderSlots(){
   let bookings;
   try{
     if(!(dateISO in bookingsCache)){
-      const res = await fetch('/api/slots?data=' + dateISO);
+      const res = await fetch('/api/slots?data=' + dateISO, {cache:'no-store'});
       if(!res.ok) throw new Error('status ' + res.status);
       const data = await res.json();
       bookingsCache[dateISO] = data.bookings || [];
@@ -202,8 +202,18 @@ async function renderSlots(){
   const startMinutes = OPEN_HOUR*60;
   const newDuration = state.service.duration;
 
+  // grila fixă din 30 în 30 minute + ora exactă la care se termină fiecare programare existentă
+  // (ex: o programare de 80 min începută la 10:00 se termină la 11:20 — o oferim ca opțiune, nu doar 11:00/11:30)
+  const candidateMinutes = new Set();
+  for(let m=startMinutes; m<=lastStartMinutes; m+=SLOT_STEP) candidateMinutes.add(m);
+  bookings.forEach(b=>{
+    const end = timeToMinutesLocal(b.ora) + Number(b.durata);
+    if(end>=startMinutes && end<=lastStartMinutes) candidateMinutes.add(end);
+  });
+  const sortedMinutes = Array.from(candidateMinutes).sort((a,b)=>a-b);
+
   let any=false;
-  for(let m=startMinutes; m<=lastStartMinutes; m+=SLOT_STEP){
+  for(const m of sortedMinutes){
     const hh = String(Math.floor(m/60)).padStart(2,'0');
     const mm = String(m%60).padStart(2,'0');
     const label = `${hh}:${mm}`;

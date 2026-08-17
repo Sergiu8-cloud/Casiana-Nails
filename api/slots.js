@@ -1,6 +1,7 @@
 const { getAllBookings } = require('./_lib/sheets');
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
   const data = req.query.data;
   if (!data) {
     res.status(400).json({ error: 'Lipseste parametrul data.' });
