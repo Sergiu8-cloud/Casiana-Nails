@@ -31,9 +31,11 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    await appendBooking([
-      data, ora, serviciu, newDur, nume, telefon, email || '', observatii || '', 'confirmat', new Date().toISOString()
-    ]);
+    await appendBooking({
+      data, ora, serviciu, durata: newDur, nume, telefon,
+      email: email || '', observatii: observatii || '',
+      status: 'confirmat', trimisLa: new Date().toISOString(),
+    });
 
     const salonEmail = process.env.SALON_EMAIL;
     if (salonEmail) {
