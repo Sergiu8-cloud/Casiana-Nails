@@ -120,6 +120,10 @@ SERVICES.forEach(s=>{
     document.querySelectorAll('.svc-choice').forEach(c=>c.classList.remove('sel'));
     el.classList.add('sel');
     state.service = s;
+    // alt serviciu înseamnă altă durată, deci ora aleasă înainte poate să nu mai încapă
+    state.time = null;
+    document.getElementById('toStep3').disabled = true;
+    if(state.date) renderSlots();
     document.getElementById('toStep2').disabled = false;
   });
   svcChoiceGrid.appendChild(el);
@@ -247,6 +251,7 @@ warmupObserver.observe(document.getElementById('programare'));
 async function renderSlots(){
   const wrap = document.getElementById('slotGrid');
   wrap.innerHTML='';
+  noteazaSub('');
   if(!state.date || !state.service){ wrap.innerHTML='<div class="no-slots">Alege mai întâi o dată din calendar.</div>'; return; }
 
   const dateISO = dateToISO(state.date);
@@ -271,36 +276,21 @@ async function renderSlots(){
   if(reqId!==slotRequestId) return; // s-a ales altă zi cât timp se încărca
 
   wrap.innerHTML = '';
-  const lastStartMinutes = (state.service.lastHour || LAST_APPOINTMENT_HOUR)*60;
-  const startMinutes = OPEN_HOUR*60;
-  const newDuration = state.service.duration;
+  noteazaSub('');
 
-  // se oferă doar ora de deschidere + ora exactă la care se termină fiecare programare existentă —
-  // nu grilă liberă din 30 în 30, ca să nu rămână goluri neutilizabile între programări
-  const candidateMinutes = new Set([startMinutes]);
-  bookings.forEach(b=>{
-    const end = timeToMinutesLocal(b.ora) + Number(b.durata);
-    if(end>=startMinutes && end<=lastStartMinutes) candidateMinutes.add(end);
-  });
-  const sortedMinutes = Array.from(candidateMinutes).sort((a,b)=>a-b);
+  let vreunaLibera = false;
+  for(const m of orePosibile(bookings)){
+    const label = formateazaOra(m);
+    const incape = oraValidaLocal(bookings, m, state.service.duration, ultimulStartPentru(state.service));
+    const altele = incape ? [] : SERVICES.filter(s=>oraValidaLocal(bookings, m, s.duration, ultimulStartPentru(s)));
+    if(!incape && !altele.length) continue; // aici nu încape nimic — nu aglomerăm lista
 
-  let any=false;
-  for(const m of sortedMinutes){
-    const hh = String(Math.floor(m/60)).padStart(2,'0');
-    const mm = String(m%60).padStart(2,'0');
-    const label = `${hh}:${mm}`;
-    const newEnd = m + newDuration;
-    // ocupat dacă se suprapune cu orice programare existentă (indiferent de serviciu — un singur meșter)
-    const taken = bookings.some(b=>{
-      const bStart = timeToMinutesLocal(b.ora);
-      const bEnd = bStart + Number(b.durata);
-      return m < bEnd && newEnd > bStart;
-    });
     const el = document.createElement('div');
-    el.className = 'slot' + (taken?' taken':'');
+    el.className = 'slot' + (incape ? '' : ' prea-scurt');
     el.textContent = label;
-    if(!taken){
-      any=true;
+
+    if(incape){
+      vreunaLibera = true;
       el.addEventListener('click', ()=>{
         document.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel'));
         el.classList.add('sel');
@@ -308,10 +298,118 @@ async function renderSlots(){
         document.getElementById('toStep3').disabled = false;
       });
       if(state.time===label) el.classList.add('sel');
+    }else{
+      el.title = 'Aici încap doar servicii mai scurte';
+      el.addEventListener('click', ()=>arataCeIncape(label, altele));
     }
     wrap.appendChild(el);
   }
-  if(!any){ wrap.innerHTML='<div class="no-slots">Nu mai sunt ore libere în această zi — alege altă dată.</div>'; }
+
+  if(!vreunaLibera){
+    wrap.innerHTML = `<div class="no-slots">${state.service.name} (${fmtDuration(state.service.duration)}) nu mai încape în această zi.</div>`;
+    cautaPrimaZiCuLoc(dateISO, reqId);
+  }
+}
+
+/* ---------------- ORELE CARE SE OFERĂ ---------------- */
+/* Aceleaşi reguli ca pe server (api/_lib/time.js): ora trebuie să fie în program, lucrarea
+   să nu se suprapună peste altă programare, iar golul lăsat înainte şi cel lăsat după să fie
+   ori zero, ori destul de mari cât să încapă altcineva. Aşa clienta poate alege ora dorită,
+   dar nu poate lăsa în urmă o fereastră în care meşterul stă degeaba. */
+const GOL_MINIM = Math.min(...SERVICES.map(s=>s.duration)); // cel mai scurt serviciu
+
+function ultimulStartPentru(serviciu){
+  return (serviciu.lastHour || LAST_APPOINTMENT_HOUR)*60;
+}
+
+function formateazaOra(m){
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+
+function intervaleOcupate(bookings){
+  return bookings
+    .map(b=>({start:timeToMinutesLocal(b.ora), sfarsit:timeToMinutesLocal(b.ora)+Number(b.durata)}))
+    .sort((a,b)=>a.start-b.start);
+}
+
+function oraValidaLocal(bookings, start, durata, ultimulStart){
+  const sfarsit = start + Number(durata);
+  if(start < OPEN_HOUR*60 || start > ultimulStart) return false;
+
+  const ocupate = intervaleOcupate(bookings);
+  if(ocupate.some(i=>start < i.sfarsit && sfarsit > i.start)) return false;
+
+  const inainte = ocupate.filter(i=>i.sfarsit<=start).pop();
+  const golInainte = start - (inainte ? inainte.sfarsit : OPEN_HOUR*60);
+  if(golInainte > 0 && golInainte < GOL_MINIM) return false;
+
+  const dupa = ocupate.find(i=>i.start>=sfarsit);
+  if(dupa && dupa.start - sfarsit > 0 && dupa.start - sfarsit < GOL_MINIM) return false;
+
+  return true;
+}
+
+// orele de pornire luate în calcul: grila din 30 în 30 plus momentul exact în care se
+// termină fiecare programare, ca să se poată lipi una de alta fără pauză
+function orePosibile(bookings){
+  const set = new Set();
+  const inLimite = m => m>=OPEN_HOUR*60 && m<=LAST_APPOINTMENT_HOUR*60;
+  for(let m=OPEN_HOUR*60; m<=LAST_APPOINTMENT_HOUR*60; m+=SLOT_STEP) set.add(m);
+  bookings.forEach(b=>{
+    const inceput = timeToMinutesLocal(b.ora);
+    if(inLimite(inceput+Number(b.durata))) set.add(inceput+Number(b.durata)); // lipit după ea
+    // şi ora la care o lucrare s-ar termina exact când începe aceasta — lipit înainte de ea
+    SERVICES.forEach(s=>{ if(inLimite(inceput-s.duration)) set.add(inceput-s.duration); });
+  });
+  return Array.from(set).sort((a,b)=>a-b);
+}
+
+function noteazaSub(html){
+  document.getElementById('slotNote').innerHTML = html;
+}
+
+function arataCeIncape(label, servicii){
+  const lista = servicii.map(s=>`${s.name} (${fmtDuration(s.duration)})`).join(', ');
+  noteazaSub(`La ${label} mai este loc doar pentru: <b>${lista}</b>. <button type="button" class="slot-link" data-schimba>Schimbă serviciul</button>`);
+  document.querySelector('[data-schimba]').addEventListener('click', ()=>goToStep(1));
+}
+
+async function cautaPrimaZiCuLoc(dinZiua, reqId){
+  noteazaSub('Caut prima zi cu loc...');
+  try{
+    const res = await fetch(`/api/slots?data=${dinZiua}&zile=21`, {cache:'no-store'});
+    if(!res.ok) throw new Error('status '+res.status);
+    const zile = (await res.json()).zile || {};
+    if(reqId!==slotRequestId) return;
+
+    for(const zi of Object.keys(zile).sort()){
+      if(zi<=dinZiua) continue;
+      const [y,m,d] = zi.split('-').map(Number);
+      const dataZi = new Date(y, m-1, d);
+      if(!WORKING_DAYS.includes(dataZi.getDay())) continue;
+
+      const libera = orePosibile(zile[zi]).find(t=>oraValidaLocal(zile[zi], t, state.service.duration, ultimulStartPentru(state.service)));
+      if(libera===undefined) continue;
+
+      const etichetaZi = dataZi.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long'});
+      noteazaSub(`Prima zi cu loc: <b>${etichetaZi}</b>, de la ${formateazaOra(libera)}. <button type="button" class="slot-link" data-sari>Vezi ziua</button>`);
+      document.querySelector('[data-sari]').addEventListener('click', ()=>mergiLaZiua(dataZi));
+      return;
+    }
+    noteazaSub('Nu am găsit loc în următoarele trei săptămâni — sună-ne și găsim o soluție.');
+  }catch(err){
+    console.error('Eroare la căutarea primei zile libere:', err);
+    noteazaSub('Alege altă zi din calendar.');
+  }
+}
+
+function mergiLaZiua(dataZi){
+  state.date = dataZi;
+  state.time = null;
+  document.getElementById('toStep3').disabled = true;
+  calCursor = new Date(dataZi.getFullYear(), dataZi.getMonth(), 1);
+  renderCalendar();
+  renderSlots();
 }
 
 function timeToMinutesLocal(label){

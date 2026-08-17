@@ -292,6 +292,20 @@ nav.wrap{
 .slot:hover{border-color:var(--gold); color:var(--gold);}
 .slot.sel{background:var(--gold); color:var(--ink); border-color:var(--gold);}
 .slot.taken{opacity:.28; text-decoration:line-through; cursor:not-allowed; pointer-events:none;}
+/* ora liberă, dar prea scurtă pentru serviciul ales — se poate apăsa ca să vezi ce încape */
+.slot.prea-scurt{
+  opacity:.6; border-style:dashed; color:#a89d84;
+}
+.slot.prea-scurt:hover{border-color:var(--gold); color:var(--gold); opacity:.85;}
+.slot-note{
+  margin-top:14px; font-size:13px; color:#c9bfa9; line-height:1.7;
+}
+.slot-note b{color:var(--cream); font-weight:400;}
+.slot-link{
+  background:none; border:none; color:var(--gold); font-family:'Jost'; font-size:14px;
+  text-decoration:underline; cursor:pointer;
+  display:inline-block; padding:10px 6px; /* destul cât să se nimerească uşor cu degetul */
+}
 .no-slots{color:#a89d84; font-size:13px; font-style:italic;}
 .slot-retry{
   background:none; border:1px solid rgba(198,161,91,.4); color:var(--gold);

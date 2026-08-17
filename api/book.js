@@ -1,6 +1,6 @@
 const { getAllBookings, appendBookingRow, setBookingStatus, refreshTabs } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
-const { timeToMinutes, overlaps, isWorkingDay } = require('./_lib/time');
+const { timeToMinutes, overlaps, isWorkingDay, oraValida, ultimulStartPentruDurata } = require('./_lib/time');
 const { telefonValid, normalizeazaTelefon, emailValid } = require('./_lib/contact');
 
 module.exports = async function handler(req, res) {
@@ -49,6 +49,17 @@ module.exports = async function handler(req, res) {
     const inainte = await getAllBookings();
     if (inainte.some(seSuprapune)) {
       res.status(200).json({ success: false, error: ocupat });
+      return;
+    }
+
+    // aceleasi reguli ca in pagina: in program, fara suprapuneri si fara sa lase in urma
+    // un gol prea mic ca sa incapa altcineva in el
+    const dinZi = inainte.filter(b => b.data === data);
+    if (!oraValida(dinZi, newStart, newDur, ultimulStartPentruDurata(newDur))) {
+      res.status(200).json({
+        success: false,
+        error: 'Ora aceasta nu mai este disponibila pentru serviciul ales. Alege alta ora sau alta zi.',
+      });
       return;
     }
 
