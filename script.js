@@ -1,16 +1,16 @@
 /* ---------------- DATA ---------------- */
 const SERVICES = [
-  {id:'clasica', name:'Manichiură clasică', price:100, priceLabel:'100 RON', duration:90, note:''},
-  {id:'semi', name:'Manichiură semipermanentă', price:170, priceLabel:'170 RON', duration:90, note:''},
-  {id:'gel', name:'Manichiură cu gel / întreținere', price:190, priceLabel:'190 RON', duration:90, note:'mărime 1/2 – 3/4'},
-  {id:'slim', name:'Manichiură Slim', price:220, priceLabel:'220 RON', duration:90, note:''},
-  {id:'pedi', name:'Pedichiură semipermanentă', price:170, priceLabel:'170 RON', duration:90, note:''},
-  {id:'pachet', name:'Pachet Pedichiură + Manichiură', price:270, priceLabel:'de la 270 RON', duration:240, note:'pedichiură + manichiura la alegere'},
+  {id:'clasica', name:'Manichiură clasică', price:100, priceLabel:'100 RON', duration:80, note:''},
+  {id:'semi', name:'Manichiură semipermanentă', price:170, priceLabel:'170 RON', duration:110, note:''},
+  {id:'gel', name:'Manichiură cu gel / întreținere', price:190, priceLabel:'190 RON', duration:130, note:'mărime 1/2 – 3/4'},
+  {id:'slim', name:'Manichiură Slim', price:220, priceLabel:'220 RON', duration:140, note:''},
+  {id:'pedi', name:'Pedichiură semipermanentă', price:170, priceLabel:'170 RON', duration:110, note:''},
+  {id:'pachet', name:'Pachet Pedichiură + Manichiură', price:270, priceLabel:'de la 340 RON', duration:250, note:'în funcție de tipul manichiurii', lastHour:15},
 ];
 
 const GALLERY = [
   {src:'images/gallery-1.jpg', tag:'Manichiură clasică', cap:'Nude clasic'},
-  {src:'images/gallery-2.jpg', tag:'Manichiură cu gel', cap:'Matte pastel'},
+  {src:'images/gallery-2.jpg', tag:'Manichiură cu gel', cap:'gel'},
   {src:'images/gallery-3.jpg', tag:'Manichiură semipermanentă', cap:'French modern'},
   {src:'images/gallery-4.jpg', tag:'Manichiură Slim', cap:'Alb perlat'},
   {src:'images/gallery-5.jpg', tag:'Manichiură semipermanentă', cap:'Ombré cu cristale'},
@@ -169,27 +169,51 @@ function renderCalendar(){
 document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
 document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
 
-/* deterministic pseudo-random "already booked" slots so demo feels real */
-function seededRand(seedStr){
-  let h = 0;
-  for(let i=0;i<seedStr.length;i++){ h = (h*31 + seedStr.charCodeAt(i)) >>> 0; }
-  return function(){ h = (h*1103515245 + 12345) >>> 0; return (h % 1000)/1000; };
+const bookingsCache = {}; // dateISO -> [{ora, durata}]
+function dateToISO(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-function renderSlots(){
+async function renderSlots(){
   const wrap = document.getElementById('slotGrid');
   wrap.innerHTML='';
   if(!state.date || !state.service){ wrap.innerHTML='<div class="no-slots">Alege mai întâi o dată din calendar.</div>'; return; }
-  const lastStartMinutes = LAST_APPOINTMENT_HOUR*60;
-  const startMinutes = OPEN_HOUR*60;
 
-  const rand = seededRand(state.date.toDateString()+state.service.id);
+  const dateISO = dateToISO(state.date);
+  wrap.innerHTML = '<div class="no-slots">Se încarcă orele...</div>';
+
+  let bookings;
+  try{
+    if(!(dateISO in bookingsCache)){
+      const res = await fetch('/api/slots?data=' + dateISO);
+      if(!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      bookingsCache[dateISO] = data.bookings || [];
+    }
+    bookings = bookingsCache[dateISO];
+  } catch(err){
+    console.error('Eroare la încărcarea orelor ocupate:', err);
+    wrap.innerHTML = '<div class="no-slots">Nu am putut încărca orele disponibile. Reîncearcă sau contactează-ne telefonic.</div>';
+    return;
+  }
+
+  wrap.innerHTML = '';
+  const lastStartMinutes = (state.service.lastHour || LAST_APPOINTMENT_HOUR)*60;
+  const startMinutes = OPEN_HOUR*60;
+  const newDuration = state.service.duration;
+
   let any=false;
   for(let m=startMinutes; m<=lastStartMinutes; m+=SLOT_STEP){
     const hh = String(Math.floor(m/60)).padStart(2,'0');
     const mm = String(m%60).padStart(2,'0');
     const label = `${hh}:${mm}`;
-    const taken = rand() < 0.22;
+    const newEnd = m + newDuration;
+    // ocupat dacă se suprapune cu orice programare existentă (indiferent de serviciu — un singur meșter)
+    const taken = bookings.some(b=>{
+      const bStart = timeToMinutesLocal(b.ora);
+      const bEnd = bStart + Number(b.durata);
+      return m < bEnd && newEnd > bStart;
+    });
     const el = document.createElement('div');
     el.className = 'slot' + (taken?' taken':'');
     el.textContent = label;
@@ -208,6 +232,11 @@ function renderSlots(){
   if(!any){ wrap.innerHTML='<div class="no-slots">Nu mai sunt ore libere în această zi — alege altă dată.</div>'; }
 }
 
+function timeToMinutesLocal(label){
+  const parts = String(label).split(':');
+  return Number(parts[0])*60 + Number(parts[1]);
+}
+
 /* step 4: summary */
 function renderSummary(){
   const card = document.getElementById('summaryCard');
@@ -223,17 +252,62 @@ function renderSummary(){
   `;
 }
 
-document.getElementById('confirmBtn').addEventListener('click', ()=>{
+document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('fName').value.trim();
   const phone = document.getElementById('fPhone').value.trim();
+  const email = document.getElementById('fEmail').value.trim();
+  const note = document.getElementById('fNote').value.trim();
   if(!name || !phone){
     goToStep(3);
     alert('Te rugăm completează numele și telefonul pentru a confirma programarea.');
     return;
   }
+
+  const confirmBtn = document.getElementById('confirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Se trimite...';
+
+  const dateISO = dateToISO(state.date); // YYYY-MM-DD (oră locală, nu UTC)
   const dateLabel = state.date.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long'});
+
+  try{
+    const res = await fetch('/api/book', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        nume: name,
+        telefon: phone,
+        email: email,
+        observatii: note,
+        serviciu: state.service.name,
+        pret: state.service.priceLabel,
+        durata: state.service.duration,
+        data: dateISO,
+        ora: state.time,
+      })
+    });
+    const result = await res.json();
+
+    if(!result.success){
+      alert(result.error || 'A apărut o eroare la salvarea programării. Încearcă din nou.');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirmă programarea';
+      renderSlots();
+      return;
+    }
+  } catch(err){
+    console.error('Eroare la trimiterea programării:', err);
+    alert('Nu am putut salva programarea — verifică conexiunea la internet și încearcă din nou.');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirmă programarea';
+    return;
+  }
+
+  delete bookingsCache[dateISO];
   document.getElementById('confirmText').textContent =
     `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = 'Confirmă programarea';
   goToStep(5);
 });
 
