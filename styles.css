@@ -348,8 +348,33 @@ nav.wrap{
 }
 .cancel-panel > p{color:#a89d84; font-size:13.5px; margin:8px 0 22px; max-width:560px;}
 .cancel-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:24px;}
-@media(max-width:640px){.cancel-grid{grid-template-columns:1fr;}}
-.cancel-grid input{color-scheme:dark;}
+@media(max-width:640px){.cancel-grid{grid-template-columns:1fr; gap:16px;}}
+
+/* câmpuri mari, uşor de apăsat cu degetul — 16px ca telefonul să nu mărească pagina la focus */
+.cancel-grid .field label{margin-bottom:2px;}
+.cancel-grid input,
+.cancel-grid select{
+  width:100%; min-height:54px; padding:15px 16px;
+  background:rgba(251,247,240,.04);
+  border:1px solid rgba(198,161,91,.35); border-bottom:1px solid rgba(198,161,91,.35);
+  border-radius:3px; color:var(--cream);
+  font-family:'Jost'; font-size:16px; color-scheme:dark;
+  transition:border-color .25s, background .25s;
+}
+.cancel-grid input:focus,
+.cancel-grid select:focus{border-color:var(--gold); background:rgba(198,161,91,.09);}
+.cancel-grid select{
+  appearance:none; -webkit-appearance:none; padding-right:44px; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%23C6A15B' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat; background-position:right 16px center;
+}
+.cancel-grid select:disabled{opacity:.55; cursor:default;}
+.cancel-grid option{background:#332B1E; color:var(--cream);}
+#cancelBtn{min-height:54px; padding:16px 38px;}
+@media(max-width:640px){
+  #cancelBtn{width:100%;}
+  .confirmed-actions .btn{width:100%; min-height:52px;}
+}
 .cancel-msg{font-size:13px; margin-top:14px; min-height:18px;}
 .cancel-msg.ok{color:var(--gold);}
 .cancel-msg.err{color:#e3a9a0;}

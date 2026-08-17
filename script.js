@@ -398,11 +398,53 @@ function arataMesaj(el, text, reusit){
   el.className = 'cancel-msg ' + (reusit ? 'ok' : 'err');
 }
 
+function dataFrumoasa(iso){
+  const [y, m, d] = String(iso).split('-').map(Number);
+  return `${d} ${MONTHS[m-1].toLowerCase()} ${y}`;
+}
+
+function textAnulare(data, ora){
+  return `Programarea a fost anulată în data de ${dataFrumoasa(data)}, de la ora ${ora}.`;
+}
+
+/* lista de ore din formularul de anulare se completează cu orele reale ale zilei alese —
+   mai uşor de apăsat pe telefon decât un ceas şi nu se poate greşi ora */
+const cData = document.getElementById('cData');
+const cOra = document.getElementById('cOra');
+
+function puneOre(ore, primaLinie){
+  cOra.innerHTML = '';
+  const p = document.createElement('option');
+  p.value = ''; p.textContent = primaLinie;
+  cOra.appendChild(p);
+  ore.forEach(o=>{
+    const el = document.createElement('option');
+    el.value = o; el.textContent = o;
+    cOra.appendChild(el);
+  });
+  cOra.disabled = !ore.length;
+}
+
+async function incarcaOreAnulare(){
+  const data = cData.value;
+  if(!data){ puneOre([], 'Alege întâi data'); return; }
+  puneOre([], 'Se încarcă orele...');
+  try{
+    const programari = await fetchBookings(data);
+    const ore = programari.map(b=>b.ora).sort();
+    puneOre(ore, ore.length ? 'Alege ora' : 'Nicio programare în această zi');
+  }catch(err){
+    console.error('Eroare la încărcarea orelor pentru anulare:', err);
+    puneOre([], 'Nu am putut încărca orele');
+  }
+}
+cData.addEventListener('change', incarcaOreAnulare);
+
 document.getElementById('cancelBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('cancelBtn');
   const msg = document.getElementById('cancelMsg');
-  const data = document.getElementById('cData').value;
-  const ora = document.getElementById('cOra').value;
+  const data = cData.value;
+  const ora = cOra.value;
   const contact = document.getElementById('cContact').value.trim();
 
   if(!data || !ora || !contact){
@@ -417,8 +459,10 @@ document.getElementById('cancelBtn').addEventListener('click', async ()=>{
   try{
     const r = await trimiteAnulare(detalii);
     if(r.success){
-      arataMesaj(msg, `Programarea a fost anulată. Ora ${ora} din ${data} este din nou liberă.`, true);
+      arataMesaj(msg, textAnulare(data, ora), true);
       delete bookingsCache[data];
+      document.getElementById('cContact').value = '';
+      incarcaOreAnulare(); // ora anulată dispare din listă
       if(state.date && dateToISO(state.date)===data) renderSlots();
     }else{
       arataMesaj(msg, r.error || 'Nu am putut anula programarea.', false);
@@ -439,7 +483,7 @@ document.getElementById('cancelJustBooked').addEventListener('click', async ()=>
   try{
     const r = await trimiteAnulare(ultimaProgramare);
     if(r.success){
-      arataMesaj(msg, 'Programarea a fost anulată, ora este din nou liberă.', true);
+      arataMesaj(msg, textAnulare(ultimaProgramare.data, ultimaProgramare.ora), true);
       delete bookingsCache[ultimaProgramare.data];
       ultimaProgramare = null;
       btn.style.display = 'none';
