@@ -1,6 +1,7 @@
 const { getAllBookings, appendBookingRow, setBookingStatus, refreshTabs } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
 const { timeToMinutes, overlaps, isWorkingDay } = require('./_lib/time');
+const { telefonValid, normalizeazaTelefon, emailValid } = require('./_lib/contact');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,6 +18,20 @@ module.exports = async function handler(req, res) {
 
   if (!isWorkingDay(data)) {
     res.status(200).json({ success: false, error: 'Salonul este inchis duminica si luni. Alege alta zi.' });
+    return;
+  }
+
+  // numarul trebuie sa fie real: cu el se confirma programarea si tot cu el se anuleaza
+  if (!telefonValid(telefon)) {
+    res.status(200).json({
+      success: false,
+      error: 'Numarul de telefon nu pare corect. Scrie-l in forma 07xx xxx xxx.',
+    });
+    return;
+  }
+
+  if (email && !emailValid(email)) {
+    res.status(200).json({ success: false, error: 'Adresa de email nu pare corecta.' });
     return;
   }
 
@@ -37,9 +52,12 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // salvam numarul in aceeasi forma mereu (0748607772), ca sa fie usor de citit in
+    // foaie si de potrivit la anulare, indiferent cum l-a scris clienta
+    const telefonCurat = normalizeazaTelefon(telefon);
     const trimisLa = new Date().toISOString();
     await appendBookingRow({
-      data, ora, serviciu, durata: newDur, nume, telefon,
+      data, ora, serviciu, durata: newDur, nume, telefon: telefonCurat,
       email: email || '', observatii: observatii || '',
       status: 'confirmat', trimisLa,
     });
@@ -50,7 +68,7 @@ module.exports = async function handler(req, res) {
     // Pauza scurta ca randul celeilalte sa fie sigur vizibil cand citim.
     await new Promise(r => setTimeout(r, 600));
     const dupa = await getAllBookings();
-    const alMeu = dupa.find(b => b.trimisLa === trimisLa && b.telefon === telefon && b.data === data && b.ora === ora);
+    const alMeu = dupa.find(b => b.trimisLa === trimisLa && b.telefon === telefonCurat && b.data === data && b.ora === ora);
     const castigator = dupa.find(b => alMeu && b.rand !== alMeu.rand && seSuprapune(b) && b.trimisLa && b.trimisLa < trimisLa);
 
     if (castigator && alMeu) {

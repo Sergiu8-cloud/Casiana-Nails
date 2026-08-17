@@ -90,6 +90,19 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 /* ---------------- BOOKING STATE ---------------- */
 let state = { service:null, date:null, time:null };
 let ultimaProgramare = null; // ce s-a rezervat acum, ca să poată fi anulat dintr-un click
+
+/* aceleași reguli ca pe server (api/_lib/contact.js) — aici doar ca să primească
+   răspuns imediat, verificarea care contează rămâne cea de pe server */
+function telefonValid(t){
+  let c = String(t||'').replace(/\D/g,'');
+  if(c.startsWith('0040')) c = c.slice(4);
+  else if(c.startsWith('40') && c.length>10) c = c.slice(2);
+  if(c.length===9 && c[0]!=='0') c = '0'+c;
+  return /^0[237]\d{8}$/.test(c);
+}
+function emailValid(e){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').trim());
+}
 let calCursor = new Date(); calCursor.setDate(1);
 const today = new Date(); today.setHours(0,0,0,0);
 
@@ -317,6 +330,19 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   if(!name || !phone){
     goToStep(3);
     alert('Te rugăm completează numele și telefonul pentru a confirma programarea.');
+    return;
+  }
+  // numărul trebuie să fie real: cu el te contactăm și tot cu el poți anula
+  if(!telefonValid(phone)){
+    goToStep(3);
+    alert('Numărul de telefon nu pare corect. Scrie-l în forma 07xx xxx xxx.');
+    document.getElementById('fPhone').focus();
+    return;
+  }
+  if(email && !emailValid(email)){
+    goToStep(3);
+    alert('Adresa de email nu pare corectă.');
+    document.getElementById('fEmail').focus();
     return;
   }
 

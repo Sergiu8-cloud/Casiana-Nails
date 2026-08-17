@@ -1,20 +1,6 @@
 const { getAllBookings, setBookingStatus, refreshTabs } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
-
-// comparam ultimele 9 cifre, ca 0748 607 772, 0748607772 si +40748607772
-// sa fie recunoscute ca acelasi numar
-function acelasiTelefon(a, b) {
-  const x = String(a || '').replace(/\D/g, '');
-  const y = String(b || '').replace(/\D/g, '');
-  if (x.length < 9 || y.length < 9) return false;
-  return x.slice(-9) === y.slice(-9);
-}
-
-function acelasiEmail(a, b) {
-  const x = String(a || '').trim().toLowerCase();
-  const y = String(b || '').trim().toLowerCase();
-  return !!x && x === y;
-}
+const { acelasiTelefon, acelasiEmail } = require('./_lib/contact');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
