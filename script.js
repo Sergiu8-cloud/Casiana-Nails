@@ -403,16 +403,19 @@ document.getElementById('cancelBtn').addEventListener('click', async ()=>{
   const msg = document.getElementById('cancelMsg');
   const data = document.getElementById('cData').value;
   const ora = document.getElementById('cOra').value;
-  const telefon = document.getElementById('cTel').value.trim();
+  const contact = document.getElementById('cContact').value.trim();
 
-  if(!data || !ora || !telefon){
-    arataMesaj(msg, 'Completează data, ora și telefonul.', false);
+  if(!data || !ora || !contact){
+    arataMesaj(msg, 'Completează data, ora și telefonul sau emailul.', false);
     return;
   }
 
+  // acelaşi câmp acceptă ambele — decidem după prezenţa lui @
+  const detalii = contact.includes('@') ? {data, ora, email:contact} : {data, ora, telefon:contact};
+
   btn.disabled = true; btn.textContent = 'Se anulează...';
   try{
-    const r = await trimiteAnulare({data, ora, telefon});
+    const r = await trimiteAnulare(detalii);
     if(r.success){
       arataMesaj(msg, `Programarea a fost anulată. Ora ${ora} din ${data} este din nou liberă.`, true);
       delete bookingsCache[data];

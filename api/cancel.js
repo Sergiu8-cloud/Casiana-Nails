@@ -1,9 +1,19 @@
 const { getAllBookings, setBookingStatus, refreshTabs } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
 
-// pastram doar cifrele, ca 0748 607 772 si 0748607772 sa fie acelasi numar
-function doarCifre(t) {
-  return String(t || '').replace(/\D/g, '');
+// comparam ultimele 9 cifre, ca 0748 607 772, 0748607772 si +40748607772
+// sa fie recunoscute ca acelasi numar
+function acelasiTelefon(a, b) {
+  const x = String(a || '').replace(/\D/g, '');
+  const y = String(b || '').replace(/\D/g, '');
+  if (x.length < 9 || y.length < 9) return false;
+  return x.slice(-9) === y.slice(-9);
+}
+
+function acelasiEmail(a, b) {
+  const x = String(a || '').trim().toLowerCase();
+  const y = String(b || '').trim().toLowerCase();
+  return !!x && x === y;
 }
 
 module.exports = async function handler(req, res) {
@@ -12,9 +22,9 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { data, ora, telefon } = req.body || {};
-  if (!data || !ora || !telefon) {
-    res.status(400).json({ success: false, error: 'Completeaza data, ora si telefonul.' });
+  const { data, ora, telefon, email } = req.body || {};
+  if (!data || !ora || (!telefon && !email)) {
+    res.status(400).json({ success: false, error: 'Completeaza data, ora si telefonul sau emailul.' });
     return;
   }
 
@@ -24,13 +34,13 @@ module.exports = async function handler(req, res) {
       b.data === data &&
       b.ora === ora &&
       b.status !== 'anulat' &&
-      doarCifre(b.telefon) === doarCifre(telefon)
+      (acelasiTelefon(b.telefon, telefon) || acelasiEmail(b.email, email))
     );
 
     if (!gasita) {
       res.status(200).json({
         success: false,
-        error: 'Nu am gasit o programare activa cu aceste date. Verifica data, ora si numarul de telefon.',
+        error: 'Nu am gasit o programare activa cu aceste date. Verifica data, ora si datele de contact.',
       });
       return;
     }

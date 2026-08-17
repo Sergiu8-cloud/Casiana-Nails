@@ -66,6 +66,7 @@ async function getAllBookings() {
   const rows = res.data.values || [];
   return rows.map((r, i) => ({
     rand: i + 2, // randul din foaie, ca sa putem modifica exact randul acesta mai tarziu
+    gol: !r[0],  // rand ramas gol dupa o compactare — nu e o programare
     data: r[0] || '',
     zi: r[1] || '',
     ora: r[2] || '',
@@ -77,7 +78,7 @@ async function getAllBookings() {
     observatii: r[8] || '',
     status: r[9] || '',
     trimisLa: r[10] || '',
-  }));
+  })).filter(b => !b.gol);
 }
 
 // scrie randul si atat — sortarea se face separat, dupa ce stim ca programarea e valida
@@ -115,17 +116,33 @@ async function refreshTabs(dateStr) {
 async function rebuildMasterSort(sheets) {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   const all = await getAllBookings();
-  const sorted = [...all].sort((a, b) => (a.data + a.ora).localeCompare(b.data + b.ora));
-  if (!sorted.length) return;
+  const ultimulRand = all.length ? all[all.length - 1].rand : 1;
 
-  // rescriem exact atatea randuri cate am citit, fara sa golim tot intai: daca intre timp
-  // a intrat o programare noua pe randul urmator, ramane acolo in loc sa se piarda
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `${SHEET_NAME}!A2:K${sorted.length + 1}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: sorted.map(toRow) },
-  });
+  // programarile anulate ies din tab, nu raman marcate
+  const sorted = all
+    .filter(b => b.status !== 'anulat')
+    .sort((a, b) => (a.data + a.ora).localeCompare(b.data + b.ora));
+
+  // rescriem de sus in jos, fara sa golim tot intai: daca intre timp a intrat o
+  // programare noua sub randurile citite, ramane acolo in loc sa se piarda
+  if (sorted.length) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${SHEET_NAME}!A2:K${sorted.length + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: sorted.map(toRow) },
+    });
+  }
+
+  // dupa compactare raman randuri duplicate la coada — le golim, dar numai pe cele
+  // pe care le-am citit noi
+  const primulGol = sorted.length + 2;
+  if (primulGol <= ultimulRand) {
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${SHEET_NAME}!A${primulGol}:K${ultimulRand}`,
+    });
+  }
 }
 
 async function rebuildDayTab(sheets, dayName) {
