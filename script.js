@@ -98,7 +98,7 @@ function telefonValid(t){
   if(c.startsWith('0040')) c = c.slice(4);
   else if(c.startsWith('40') && c.length>10) c = c.slice(2);
   if(c.length===9 && c[0]!=='0') c = '0'+c;
-  return /^0[237]\d{8}$/.test(c);
+  return /^(07[2-9]\d{7}|0[23]\d{8})$/.test(c);
 }
 function emailValid(e){
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').trim());

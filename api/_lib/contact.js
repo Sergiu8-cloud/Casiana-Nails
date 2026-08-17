@@ -8,9 +8,10 @@ function normalizeazaTelefon(t) {
   return c;
 }
 
-// numere romanesti reale: mobil 07xx xxx xxx, fix 02x / 03x — 10 cifre
+// numere romanesti reale, 10 cifre: mobil 072-079 (prefixele chiar alocate) sau fix 02x/03x.
+// asa cad si numere plauzibile la prima vedere, dar inventate, ca 0700000000 sau 0710000000
 function telefonValid(t) {
-  return /^0[237]\d{8}$/.test(normalizeazaTelefon(t));
+  return /^(07[2-9]\d{7}|0[23]\d{8})$/.test(normalizeazaTelefon(t));
 }
 
 // la anulare comparam ultimele 9 cifre, ca prefixul de tara sa nu conteze
