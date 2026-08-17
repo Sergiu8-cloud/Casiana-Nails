@@ -174,28 +174,55 @@ function dateToISO(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+const SLOT_FETCH_TIMEOUT = 12000; // ms — prima cerere „rece" către funcția de pe server poate dura mult
+const SLOT_FETCH_RETRIES = 2;     // cererea care expiră pornește funcția; următoarea răspunde rapid
+let slotRequestId = 0;            // ca un răspuns întârziat să nu suprascrie ziua aleasă între timp
+
+async function fetchBookings(dateISO, onRetry){
+  let lastErr;
+  for(let attempt=0; attempt<=SLOT_FETCH_RETRIES; attempt++){
+    if(attempt>0 && onRetry) onRetry(attempt);
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), SLOT_FETCH_TIMEOUT);
+    try{
+      const res = await fetch('/api/slots?data=' + dateISO, {cache:'no-store', signal:ctrl.signal});
+      if(!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      return data.bookings || [];
+    }catch(err){
+      lastErr = err;
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+  throw lastErr;
+}
+
 async function renderSlots(){
   const wrap = document.getElementById('slotGrid');
   wrap.innerHTML='';
   if(!state.date || !state.service){ wrap.innerHTML='<div class="no-slots">Alege mai întâi o dată din calendar.</div>'; return; }
 
   const dateISO = dateToISO(state.date);
+  const reqId = ++slotRequestId;
   wrap.innerHTML = '<div class="no-slots">Se încarcă orele...</div>';
 
   let bookings;
   try{
     if(!(dateISO in bookingsCache)){
-      const res = await fetch('/api/slots?data=' + dateISO, {cache:'no-store'});
-      if(!res.ok) throw new Error('status ' + res.status);
-      const data = await res.json();
-      bookingsCache[dateISO] = data.bookings || [];
+      bookingsCache[dateISO] = await fetchBookings(dateISO, ()=>{
+        if(reqId===slotRequestId) wrap.innerHTML = '<div class="no-slots">Se încarcă orele... (mai durează câteva secunde)</div>';
+      });
     }
     bookings = bookingsCache[dateISO];
   } catch(err){
     console.error('Eroare la încărcarea orelor ocupate:', err);
-    wrap.innerHTML = '<div class="no-slots">Nu am putut încărca orele disponibile. Reîncearcă sau contactează-ne telefonic.</div>';
+    if(reqId!==slotRequestId) return;
+    wrap.innerHTML = '<div class="no-slots">Nu am putut încărca orele disponibile. <button type="button" class="slot-retry">Reîncearcă</button></div>';
+    wrap.querySelector('.slot-retry').addEventListener('click', renderSlots);
     return;
   }
+  if(reqId!==slotRequestId) return; // s-a ales altă zi cât timp se încărca
 
   wrap.innerHTML = '';
   const lastStartMinutes = (state.service.lastHour || LAST_APPOINTMENT_HOUR)*60;

@@ -293,6 +293,12 @@ nav.wrap{
 .slot.sel{background:var(--gold); color:var(--ink); border-color:var(--gold);}
 .slot.taken{opacity:.28; text-decoration:line-through; cursor:not-allowed; pointer-events:none;}
 .no-slots{color:#a89d84; font-size:13px; font-style:italic;}
+.slot-retry{
+  background:none; border:1px solid rgba(198,161,91,.4); color:var(--gold);
+  font-family:'Jost'; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+  padding:7px 16px; margin-left:8px; border-radius:2px; cursor:pointer; transition:all .25s;
+}
+.slot-retry:hover{background:var(--gold); color:var(--ink); border-color:var(--gold);}
 
 .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr;}}
