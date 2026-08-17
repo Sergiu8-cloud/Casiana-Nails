@@ -3,6 +3,7 @@ const { google } = require('googleapis');
 const SHEET_NAME = 'Programari';
 const HEADER_ROW = ['Data', 'Zi', 'Ora', 'Serviciu', 'Durata (min)', 'Nume', 'Telefon', 'Email', 'Observatii', 'Status', 'Trimis la'];
 const DOW_RO = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
+const COL_STATUS = 'J'; // coloana Status, a 10-a din HEADER_ROW
 
 function getDayNameRo(dateStr) {
   const [y, m, d] = String(dateStr).split('-').map(Number);
@@ -22,10 +23,18 @@ function getAuth() {
   });
 }
 
-async function getSheetsClient() {
-  const auth = getAuth();
-  await auth.authorize();
-  return google.sheets({ version: 'v4', auth });
+// o singura autentificare per pornire a functiei: o programare face mai multe apeluri,
+// iar altfel fiecare ar plati din nou drumul pana la Google pentru un token nou
+let clientPromis = null;
+function getSheetsClient() {
+  if (!clientPromis) {
+    clientPromis = (async () => {
+      const auth = getAuth();
+      await auth.authorize();
+      return google.sheets({ version: 'v4', auth });
+    })().catch(err => { clientPromis = null; throw err; });
+  }
+  return clientPromis;
 }
 
 async function ensureSheetExists(sheets, sheetName) {
@@ -55,7 +64,8 @@ async function getAllBookings() {
     range: `${SHEET_NAME}!A2:K`,
   });
   const rows = res.data.values || [];
-  return rows.map(r => ({
+  return rows.map((r, i) => ({
+    rand: i + 2, // randul din foaie, ca sa putem modifica exact randul acesta mai tarziu
     data: r[0] || '',
     zi: r[1] || '',
     ora: r[2] || '',
@@ -70,7 +80,8 @@ async function getAllBookings() {
   }));
 }
 
-async function appendBooking(booking) {
+// scrie randul si atat — sortarea se face separat, dupa ce stim ca programarea e valida
+async function appendBookingRow(booking) {
   const sheets = await getSheetsClient();
   await ensureSheetExists(sheets, SHEET_NAME);
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -78,12 +89,26 @@ async function appendBooking(booking) {
     spreadsheetId,
     range: `${SHEET_NAME}!A1`,
     valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [toRow(booking)] },
   });
+}
 
+async function setBookingStatus(rand, status) {
+  const sheets = await getSheetsClient();
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${SHEET_NAME}!${COL_STATUS}${rand}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[status]] },
+  });
+}
+
+async function refreshTabs(dateStr) {
+  const sheets = await getSheetsClient();
   await rebuildMasterSort(sheets);
-
-  const dayName = getDayNameRo(booking.data);
+  const dayName = getDayNameRo(dateStr);
   if (dayName) await rebuildDayTab(sheets, dayName);
 }
 
@@ -91,16 +116,16 @@ async function rebuildMasterSort(sheets) {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   const all = await getAllBookings();
   const sorted = [...all].sort((a, b) => (a.data + a.ora).localeCompare(b.data + b.ora));
+  if (!sorted.length) return;
 
-  await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${SHEET_NAME}!A2:K` });
-  if (sorted.length) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${SHEET_NAME}!A2`,
-      valueInputOption: 'RAW',
-      requestBody: { values: sorted.map(toRow) },
-    });
-  }
+  // rescriem exact atatea randuri cate am citit, fara sa golim tot intai: daca intre timp
+  // a intrat o programare noua pe randul urmator, ramane acolo in loc sa se piarda
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${SHEET_NAME}!A2:K${sorted.length + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: sorted.map(toRow) },
+  });
 }
 
 async function rebuildDayTab(sheets, dayName) {
@@ -123,4 +148,4 @@ async function rebuildDayTab(sheets, dayName) {
   }
 }
 
-module.exports = { getAllBookings, appendBooking };
+module.exports = { getAllBookings, appendBookingRow, setBookingStatus, refreshTabs };

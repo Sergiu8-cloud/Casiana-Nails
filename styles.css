@@ -335,6 +335,24 @@ nav.wrap{
 }
 .confirmed h3{font-size:28px; color:var(--cream); margin-bottom:10px;}
 .confirmed p{color:#c9bfa9; font-size:14px; max-width:400px; margin:0 auto 28px;}
+.confirmed-actions{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+
+/* ---------- ANULARE ---------- */
+.cancel-panel{
+  max-width:920px; margin:22px auto 0; padding:30px 44px;
+  border:1px solid rgba(198,161,91,.22); border-radius:3px; background:rgba(198,161,91,.05);
+}
+@media(max-width:640px){.cancel-panel{padding:24px 20px;}}
+.cancel-panel h4{
+  font-family:'Cormorant Garamond',serif; font-size:21px; font-weight:500; color:var(--cream);
+}
+.cancel-panel > p{color:#a89d84; font-size:13.5px; margin:8px 0 22px; max-width:560px;}
+.cancel-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:24px;}
+@media(max-width:640px){.cancel-grid{grid-template-columns:1fr;}}
+.cancel-grid input{color-scheme:dark;}
+.cancel-msg{font-size:13px; margin-top:14px; min-height:18px;}
+.cancel-msg.ok{color:var(--gold);}
+.cancel-msg.err{color:#e3a9a0;}
 
 /* ---------- HOURS / CONTACT ---------- */
 .hours-sec{background:var(--cream);}

@@ -142,10 +142,26 @@
           <div class="ico">✓</div>
           <h3>Programare înregistrată</h3>
           <p id="confirmText">Te așteptăm la salon! Vei fi contactată telefonic pentru confirmare finală.</p>
-          <button class="btn btn-solid" id="newBooking">Fă o nouă programare</button>
+          <div class="confirmed-actions">
+            <button class="btn btn-solid" id="newBooking">Fă o nouă programare</button>
+            <button class="btn btn-ghost" id="cancelJustBooked">Anulează programarea</button>
+          </div>
+          <div class="cancel-msg" id="cancelJustBookedMsg"></div>
         </div>
       </div>
 
+    </div>
+
+    <div class="cancel-panel">
+      <h4>Ai o programare și nu mai poți ajunge?</h4>
+      <p>Anuleaz-o aici, ca ora să rămână liberă pentru altcineva. Completează datele cu care ai făcut programarea.</p>
+      <div class="cancel-grid">
+        <div class="field"><label>Data</label><input type="date" id="cData"></div>
+        <div class="field"><label>Ora</label><input type="time" id="cOra" step="600"></div>
+        <div class="field"><label>Telefon</label><input type="tel" id="cTel" placeholder="07xx xxx xxx"></div>
+      </div>
+      <button class="btn btn-ghost" id="cancelBtn">Anulează programarea</button>
+      <div class="cancel-msg" id="cancelMsg"></div>
     </div>
   </div>
 </section>

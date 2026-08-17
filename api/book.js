@@ -1,4 +1,4 @@
-const { getAllBookings, appendBooking } = require('./_lib/sheets');
+const { getAllBookings, appendBookingRow, setBookingStatus, refreshTabs } = require('./_lib/sheets');
 const { sendEmail } = require('./_lib/email');
 const { timeToMinutes, overlaps, isWorkingDay } = require('./_lib/time');
 
@@ -20,27 +20,47 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const ocupat = 'Ne pare rau, ora selectata tocmai a fost ocupata. Alege alta ora.';
+
   try {
-    const all = await getAllBookings();
     const newStart = timeToMinutes(ora);
     const newDur = Number(durata);
-
-    const conflict = all.some(b =>
+    const seSuprapune = b =>
       b.data === data &&
       b.status !== 'anulat' &&
-      overlaps(newStart, newDur, timeToMinutes(b.ora), b.durata)
-    );
+      overlaps(newStart, newDur, timeToMinutes(b.ora), b.durata);
 
-    if (conflict) {
-      res.status(200).json({ success: false, error: 'Ne pare rau, ora selectata tocmai a fost ocupata. Alege alta ora.' });
+    // verificare inainte de scriere: prinde cazul obisnuit, cand ora e deja luata
+    const inainte = await getAllBookings();
+    if (inainte.some(seSuprapune)) {
+      res.status(200).json({ success: false, error: ocupat });
       return;
     }
 
-    await appendBooking({
+    const trimisLa = new Date().toISOString();
+    await appendBookingRow({
       data, ora, serviciu, durata: newDur, nume, telefon,
       email: email || '', observatii: observatii || '',
-      status: 'confirmat', trimisLa: new Date().toISOString(),
+      status: 'confirmat', trimisLa,
     });
+
+    // verificare dupa scriere: daca doua cliente au apasat "Confirma" in aceeasi clipa,
+    // amandoua puteau trece de verificarea de mai sus. Acum randurile sunt amandoua in
+    // foaie, deci pastram programarea trimisa prima si o anulam pe a doua.
+    // Pauza scurta ca randul celeilalte sa fie sigur vizibil cand citim.
+    await new Promise(r => setTimeout(r, 600));
+    const dupa = await getAllBookings();
+    const alMeu = dupa.find(b => b.trimisLa === trimisLa && b.telefon === telefon && b.data === data && b.ora === ora);
+    const castigator = dupa.find(b => alMeu && b.rand !== alMeu.rand && seSuprapune(b) && b.trimisLa && b.trimisLa < trimisLa);
+
+    if (castigator && alMeu) {
+      await setBookingStatus(alMeu.rand, 'anulat');
+      await refreshTabs(data);
+      res.status(200).json({ success: false, error: ocupat });
+      return;
+    }
+
+    await refreshTabs(data);
 
     const salonEmail = process.env.SALON_EMAIL;
     if (salonEmail) {
@@ -54,7 +74,7 @@ module.exports = async function handler(req, res) {
       await sendEmail(
         email,
         'Confirmare programare - Casiana Nails',
-        `Buna, ${nume}!\n\nProgramarea ta a fost inregistrata cu succes:\nServiciu: ${serviciu}\nData: ${data}\nOra: ${ora}\n\nTe asteptam la salon!\nCasiana Nails`
+        `Buna, ${nume}!\n\nProgramarea ta a fost inregistrata cu succes:\nServiciu: ${serviciu}\nData: ${data}\nOra: ${ora}\n\nPentru anulare, intra pe site la sectiunea "Anuleaza o programare".\n\nTe asteptam la salon!\nCasiana Nails`
       );
     }
 

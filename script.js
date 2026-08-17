@@ -89,6 +89,7 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 
 /* ---------------- BOOKING STATE ---------------- */
 let state = { service:null, date:null, time:null };
+let ultimaProgramare = null; // ce s-a rezervat acum, ca să poată fi anulat dintr-un click
 let calCursor = new Date(); calCursor.setDate(1);
 const today = new Date(); today.setHours(0,0,0,0);
 
@@ -360,6 +361,9 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   }
 
   delete bookingsCache[dateISO];
+  ultimaProgramare = { data: dateISO, ora: state.time, telefon: phone };
+  document.getElementById('cancelJustBooked').style.display = '';
+  document.getElementById('cancelJustBookedMsg').textContent = '';
   document.getElementById('confirmText').textContent =
     `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
   confirmBtn.disabled = false;
@@ -377,6 +381,73 @@ document.getElementById('newBooking').addEventListener('click', ()=>{
   document.getElementById('fEmail').value='';
   document.getElementById('fNote').value='';
   goToStep(1);
+});
+
+/* ---------------- ANULARE PROGRAMARE ---------------- */
+async function trimiteAnulare(detalii){
+  const res = await fetch('/api/cancel', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(detalii)
+  });
+  return res.json();
+}
+
+function arataMesaj(el, text, reusit){
+  el.textContent = text;
+  el.className = 'cancel-msg ' + (reusit ? 'ok' : 'err');
+}
+
+document.getElementById('cancelBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('cancelBtn');
+  const msg = document.getElementById('cancelMsg');
+  const data = document.getElementById('cData').value;
+  const ora = document.getElementById('cOra').value;
+  const telefon = document.getElementById('cTel').value.trim();
+
+  if(!data || !ora || !telefon){
+    arataMesaj(msg, 'Completează data, ora și telefonul.', false);
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Se anulează...';
+  try{
+    const r = await trimiteAnulare({data, ora, telefon});
+    if(r.success){
+      arataMesaj(msg, `Programarea a fost anulată. Ora ${ora} din ${data} este din nou liberă.`, true);
+      delete bookingsCache[data];
+      if(state.date && dateToISO(state.date)===data) renderSlots();
+    }else{
+      arataMesaj(msg, r.error || 'Nu am putut anula programarea.', false);
+    }
+  }catch(err){
+    console.error('Eroare la anulare:', err);
+    arataMesaj(msg, 'Nu am putut trimite cererea. Verifică internetul și încearcă din nou.', false);
+  }
+  btn.disabled = false; btn.textContent = 'Anulează programarea';
+});
+
+document.getElementById('cancelJustBooked').addEventListener('click', async ()=>{
+  if(!ultimaProgramare) return;
+  const btn = document.getElementById('cancelJustBooked');
+  const msg = document.getElementById('cancelJustBookedMsg');
+
+  btn.disabled = true; btn.textContent = 'Se anulează...';
+  try{
+    const r = await trimiteAnulare(ultimaProgramare);
+    if(r.success){
+      arataMesaj(msg, 'Programarea a fost anulată, ora este din nou liberă.', true);
+      delete bookingsCache[ultimaProgramare.data];
+      ultimaProgramare = null;
+      btn.style.display = 'none';
+      return;
+    }
+    arataMesaj(msg, r.error || 'Nu am putut anula programarea.', false);
+  }catch(err){
+    console.error('Eroare la anulare:', err);
+    arataMesaj(msg, 'Nu am putut trimite cererea. Încearcă din nou.', false);
+  }
+  btn.disabled = false; btn.textContent = 'Anulează programarea';
 });
 
 renderCalendar();
