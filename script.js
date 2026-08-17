@@ -10,7 +10,7 @@ const SERVICES = [
 
 const GALLERY = [
   {src:'images/gallery-1.jpg', tag:'Manichiură clasică', cap:'Nude clasic'},
-  {src:'images/gallery-2.jpg', tag:'Manichiură cu gel', cap:'Matte pastel'},
+  {src:'images/gallery-2.jpg', tag:'Manichiură cu gel', cap:'gel'},
   {src:'images/gallery-3.jpg', tag:'Manichiură semipermanentă', cap:'French modern'},
   {src:'images/gallery-4.jpg', tag:'Manichiură Slim', cap:'Alb perlat'},
   {src:'images/gallery-5.jpg', tag:'Manichiură semipermanentă', cap:'Ombré cu cristale'},
