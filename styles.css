@@ -40,6 +40,10 @@ img{max-width:100%; display:block;}
 }
 .wrap{max-width:1160px; margin:0 auto; padding:0 32px;}
 @media(max-width:640px){.wrap{padding:0 20px;}}
+@media(max-width:380px){
+  .brand span{font-size:17px; letter-spacing:1.5px;}
+  .contact-list li{font-size:13px; flex-wrap:wrap;}
+}
 
 ::selection{background:var(--gold-light); color:var(--ink);}
 
