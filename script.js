@@ -136,6 +136,18 @@ function goToStep(n){
     p.classList.toggle('done', s<n);
   });
   if(n===2){ warmupSlots(); renderCalendar(); }
+  aduPanoulInDreptulOchilor();
+}
+
+/* Paşii au înălţimi diferite — lista de servicii e mult mai înaltă decât calendarul.
+   Fără asta, după "Continuă" pagina rămâne la aceeaşi poziţie de derulare, care ajunge
+   să cadă peste secţiunea de anulare, şi trebuie să urci înapoi ca să vezi calendarul. */
+function aduPanoulInDreptulOchilor(){
+  const panou = document.querySelector('.booking-panel');
+  const antet = document.querySelector('header');
+  const spatiu = (antet ? antet.offsetHeight : 0) + 16; // bara de sus e fixă, lăsăm loc sub ea
+  const y = panou.getBoundingClientRect().top + window.pageYOffset - spatiu;
+  window.scrollTo(0, Math.max(0, y));
 }
 document.getElementById('toStep2').addEventListener('click', ()=>goToStep(2));
 document.getElementById('toStep3').addEventListener('click', ()=>goToStep(3));
