@@ -37,10 +37,19 @@ function getSheetsClient() {
   return clientPromis;
 }
 
+// O programare face mai multe citiri si scrieri, iar fiecare cerea din nou lista de taburi.
+// Retinem ce taburi exista, cat tine pornirea functiei: un tab existent nu dispare singur,
+// iar asa nu mai consumam degeaba din cate cereri pe minut ne lasa Google.
+const foiCunoscute = new Set();
+
 async function ensureSheetExists(sheets, sheetName) {
+  if (foiCunoscute.has(sheetName)) return;
+
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
-  const exists = meta.data.sheets.some(s => s.properties.title === sheetName);
+  meta.data.sheets.forEach(s => foiCunoscute.add(s.properties.title));
+
+  const exists = foiCunoscute.has(sheetName);
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -52,6 +61,7 @@ async function ensureSheetExists(sheets, sheetName) {
       valueInputOption: 'RAW',
       requestBody: { values: [HEADER_ROW] },
     });
+    foiCunoscute.add(sheetName);
   }
 }
 
