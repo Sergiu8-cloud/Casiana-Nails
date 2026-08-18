@@ -30,8 +30,12 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (email && !emailValid(email)) {
-    res.status(200).json({ success: false, error: 'Adresa de email nu pare corecta.' });
+  // emailul e obligatoriu: pe el pleaca confirmarea programarii
+  if (!emailValid(email)) {
+    res.status(200).json({
+      success: false,
+      error: 'Scrie o adresa de email valida - acolo iti trimitem confirmarea programarii.',
+    });
     return;
   }
 

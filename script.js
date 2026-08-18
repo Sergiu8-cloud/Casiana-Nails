@@ -429,6 +429,7 @@ function renderSummary(){
     <div class="row"><span>Ora</span><span>${state.time || '—'}</span></div>
     <div class="row"><span>Nume</span><span>${document.getElementById('fName').value || '—'}</span></div>
     <div class="row"><span>Telefon</span><span>${document.getElementById('fPhone').value || '—'}</span></div>
+    <div class="row"><span>Email</span><span>${document.getElementById('fEmail').value || '—'}</span></div>
   `;
 }
 
@@ -449,9 +450,10 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
     document.getElementById('fPhone').focus();
     return;
   }
-  if(email && !emailValid(email)){
+  // emailul e obligatoriu: acolo ajunge confirmarea programării
+  if(!email || !emailValid(email)){
     goToStep(3);
-    alert('Adresa de email nu pare corectă.');
+    alert('Scrie o adresă de email validă — acolo îți trimitem confirmarea programării.');
     document.getElementById('fEmail').focus();
     return;
   }
@@ -501,7 +503,7 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   document.getElementById('cancelJustBooked').style.display = '';
   document.getElementById('cancelJustBookedMsg').textContent = '';
   document.getElementById('confirmText').textContent =
-    `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Vei fi contactată la ${phone} pentru confirmare.`;
+    `${name}, programarea ta pentru "${state.service.name}" este rezervată pe ${dateLabel} la ora ${state.time}. Confirmarea a plecat pe ${email}, iar la nevoie te sunăm la ${phone}.`;
   confirmBtn.disabled = false;
   confirmBtn.textContent = 'Confirmă programarea';
   goToStep(5);
