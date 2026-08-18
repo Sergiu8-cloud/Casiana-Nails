@@ -284,7 +284,12 @@ nav.wrap{
 
 .slots-wrap{margin-top:34px;}
 .slots-wrap .lab{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#a89d84; margin-bottom:14px;}
-.slot-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:10px;}
+/* orele sunt din 10 în 10, deci sunt multe — casete mai înguste, ca lista să nu ocupe tot ecranul */
+.slot-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px;}
+@media(max-width:640px){
+  .slot-grid{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));}
+  .slot{padding:11px 2px; font-size:12.5px;}
+}
 .slot{
   padding:11px 6px; text-align:center; font-size:13px; border:1px solid rgba(198,161,91,.3);
   border-radius:2px; cursor:pointer; color:#d8cfba; transition:all .25s; font-family:'Jost';
@@ -297,6 +302,9 @@ nav.wrap{
   opacity:.6; border-style:dashed; color:#a89d84;
 }
 .slot.prea-scurt:hover{border-color:var(--gold); color:var(--gold); opacity:.85;}
+/* ora care se leagă de program fără pauză — de preferat, dar nu obligatorie */
+.slot.recomandat{border-color:rgba(198,161,91,.75); color:var(--gold); font-weight:500;}
+.lab-legenda{text-transform:none; letter-spacing:.3px; color:#8b8272; font-size:11px;}
 .slot-note{
   margin-top:14px; font-size:13px; color:#c9bfa9; line-height:1.7;
 }

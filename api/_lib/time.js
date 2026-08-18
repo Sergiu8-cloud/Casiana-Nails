@@ -19,7 +19,7 @@ function isWorkingDay(dateStr) {
 const DESCHIDERE = 10 * 60;       // 10:00 — prima ora de start
 const ULTIMUL_START = 17 * 60;    // 17:00 — ultima ora la care poate incepe o programare
 const ULTIMUL_START_PACHET = 15 * 60; // pachetul pedichiura + manichiura, singurul peste 4h
-const GOL_MINIM = 80;             // cat tine cel mai scurt serviciu (manichiura clasica)
+const PAS = 10;                   // orele se ofera din 10 in 10 minute (11:20, 13:50, 14:40)
 
 // ultima ora de start pentru un serviciu, dedusa din durata: doar pachetul trece de 4h
 function ultimulStartPentruDurata(durata) {
@@ -33,29 +33,32 @@ function intervaleOcupate(programari) {
     .sort((a, b) => a.start - b.start);
 }
 
-// O ora e buna daca: e in program, lucrarea nu se suprapune peste alta programare, iar
-// golul lasat inainte si cel lasat dupa sunt ori zero, ori destul de mari cat sa incapa
-// ceva in ele. Altfel raman ferestre in care mesterul nu poate primi pe nimeni.
+// O ora e buna daca e in program, cade pe pasul de 10 minute si lucrarea nu se suprapune
+// peste alta programare. Golurile ramase NU blocheaza nimic: a refuza o programare de
+// 1h20 ca sa eviti 10 minute libere inseamna sa pierzi mai mult decat castigi. Golurile
+// se descurajeaza in pagina, unde orele care se lipesc perfect sunt marcate ca recomandate.
 function oraValida(programari, start, durata, ultimulStart) {
   const sfarsit = start + Number(durata);
   if (start < DESCHIDERE || start > (ultimulStart || ULTIMUL_START)) return false;
+  if (start % PAS !== 0) return false;
 
   const ocupate = intervaleOcupate(programari);
-  if (ocupate.some(i => start < i.sfarsit && sfarsit > i.start)) return false;
+  return !ocupate.some(i => start < i.sfarsit && sfarsit > i.start);
+}
 
+// se lipeste de programul zilei fara sa lase timp mort: fie incepe exact cand se termina
+// alta programare (sau la deschidere), fie se termina exact cand incepe urmatoarea
+function faraGol(programari, start, durata) {
+  const sfarsit = start + Number(durata);
+  const ocupate = intervaleOcupate(programari);
   const inainte = ocupate.filter(i => i.sfarsit <= start).pop();
-  const golInainte = start - (inainte ? inainte.sfarsit : DESCHIDERE);
-  if (golInainte > 0 && golInainte < GOL_MINIM) return false;
-
-  // dupa ultima programare a zilei nu mai e "gol" — acolo se inchide oricum
+  if (start === (inainte ? inainte.sfarsit : DESCHIDERE)) return true;
   const dupa = ocupate.find(i => i.start >= sfarsit);
-  if (dupa && dupa.start - sfarsit > 0 && dupa.start - sfarsit < GOL_MINIM) return false;
-
-  return true;
+  return !!dupa && dupa.start === sfarsit;
 }
 
 module.exports = {
   timeToMinutes, overlaps, WORKING_DAYS, isWorkingDay,
-  DESCHIDERE, ULTIMUL_START, GOL_MINIM,
-  ultimulStartPentruDurata, oraValida,
+  DESCHIDERE, ULTIMUL_START, PAS,
+  ultimulStartPentruDurata, oraValida, faraGol,
 };

@@ -25,7 +25,7 @@ const GALLERY = [
 
 const OPEN_HOUR = 10;          // 10:00 — prima programare
 const LAST_APPOINTMENT_HOUR = 17; // 17:00 — ultima programare (indiferent de durata serviciului)
-const SLOT_STEP = 30;          // minute
+const SLOT_STEP = 10;          // minute — orele se oferă din 10 în 10 (11:20, 13:50, 14:40)
 const WORKING_DAYS = [2,3,4,5,6]; // Marți(2) – Sâmbătă(6); 0=Duminică, 1=Luni — închis
 
 /* ---------------- RENDER SERVICES ---------------- */
@@ -279,14 +279,18 @@ async function renderSlots(){
   noteazaSub('');
 
   let vreunaLibera = false;
-  for(const m of orePosibile(bookings)){
+  let vreunaRecomandata = false;
+  for(const m of orePosibile()){
     const label = formateazaOra(m);
     const incape = oraValidaLocal(bookings, m, state.service.duration, ultimulStartPentru(state.service));
     const altele = incape ? [] : SERVICES.filter(s=>oraValidaLocal(bookings, m, s.duration, ultimulStartPentru(s)));
     if(!incape && !altele.length) continue; // aici nu încape nimic — nu aglomerăm lista
 
+    const recomandata = incape && faraGol(bookings, m, state.service.duration);
+    if(recomandata) vreunaRecomandata = true;
     const el = document.createElement('div');
-    el.className = 'slot' + (incape ? '' : ' prea-scurt');
+    el.className = 'slot' + (incape ? '' : ' prea-scurt') + (recomandata ? ' recomandat' : '');
+    if(recomandata) el.title = 'Se leagă de programul zilei, fără pauză';
     el.textContent = label;
 
     if(incape){
@@ -305,6 +309,9 @@ async function renderSlots(){
     wrap.appendChild(el);
   }
 
+  document.getElementById('slotLegenda').textContent =
+    vreunaRecomandata ? '· orele îngroșate se leagă de program, fără pauză' : '';
+
   if(!vreunaLibera){
     wrap.innerHTML = `<div class="no-slots">${state.service.name} (${fmtDuration(state.service.duration)}) nu mai încape în această zi.</div>`;
     cautaPrimaZiCuLoc(dateISO, reqId);
@@ -312,11 +319,10 @@ async function renderSlots(){
 }
 
 /* ---------------- ORELE CARE SE OFERĂ ---------------- */
-/* Aceleaşi reguli ca pe server (api/_lib/time.js): ora trebuie să fie în program, lucrarea
-   să nu se suprapună peste altă programare, iar golul lăsat înainte şi cel lăsat după să fie
-   ori zero, ori destul de mari cât să încapă altcineva. Aşa clienta poate alege ora dorită,
-   dar nu poate lăsa în urmă o fereastră în care meşterul stă degeaba. */
-const GOL_MINIM = Math.min(...SERVICES.map(s=>s.duration)); // cel mai scurt serviciu
+/* Aceleaşi reguli ca pe server (api/_lib/time.js): ora e bună dacă e în program, cade pe
+   pasul de 10 minute şi lucrarea nu se suprapune peste altă programare. Golurile nu
+   blochează nimic — orele care se lipesc perfect sunt doar marcate ca recomandate, ca să
+   fie alese primele şi ziua să iasă strânsă de la sine. */
 
 function ultimulStartPentru(serviciu){
   return (serviciu.lastHour || LAST_APPOINTMENT_HOUR)*60;
@@ -335,33 +341,27 @@ function intervaleOcupate(bookings){
 function oraValidaLocal(bookings, start, durata, ultimulStart){
   const sfarsit = start + Number(durata);
   if(start < OPEN_HOUR*60 || start > ultimulStart) return false;
-
   const ocupate = intervaleOcupate(bookings);
-  if(ocupate.some(i=>start < i.sfarsit && sfarsit > i.start)) return false;
-
-  const inainte = ocupate.filter(i=>i.sfarsit<=start).pop();
-  const golInainte = start - (inainte ? inainte.sfarsit : OPEN_HOUR*60);
-  if(golInainte > 0 && golInainte < GOL_MINIM) return false;
-
-  const dupa = ocupate.find(i=>i.start>=sfarsit);
-  if(dupa && dupa.start - sfarsit > 0 && dupa.start - sfarsit < GOL_MINIM) return false;
-
-  return true;
+  return !ocupate.some(i=>start < i.sfarsit && sfarsit > i.start);
 }
 
-// orele de pornire luate în calcul: grila din 30 în 30 plus momentul exact în care se
-// termină fiecare programare, ca să se poată lipi una de alta fără pauză
-function orePosibile(bookings){
-  const set = new Set();
-  const inLimite = m => m>=OPEN_HOUR*60 && m<=LAST_APPOINTMENT_HOUR*60;
-  for(let m=OPEN_HOUR*60; m<=LAST_APPOINTMENT_HOUR*60; m+=SLOT_STEP) set.add(m);
-  bookings.forEach(b=>{
-    const inceput = timeToMinutesLocal(b.ora);
-    if(inLimite(inceput+Number(b.durata))) set.add(inceput+Number(b.durata)); // lipit după ea
-    // şi ora la care o lucrare s-ar termina exact când începe aceasta — lipit înainte de ea
-    SERVICES.forEach(s=>{ if(inLimite(inceput-s.duration)) set.add(inceput-s.duration); });
-  });
-  return Array.from(set).sort((a,b)=>a-b);
+// se lipeşte de restul zilei fără timp mort: ori începe fix când se termină altceva
+// (sau la deschidere), ori se termină fix când începe programarea următoare
+function faraGol(bookings, start, durata){
+  const sfarsit = start + Number(durata);
+  const ocupate = intervaleOcupate(bookings);
+  const inainte = ocupate.filter(i=>i.sfarsit<=start).pop();
+  if(start === (inainte ? inainte.sfarsit : OPEN_HOUR*60)) return true;
+  const dupa = ocupate.find(i=>i.start>=sfarsit);
+  return !!dupa && dupa.start === sfarsit;
+}
+
+// grila din 10 în 10 minute — toate duratele sunt multipli de 10, deci orele care se
+// lipesc de o programare existentă cad oricum pe grilă
+function orePosibile(){
+  const ore = [];
+  for(let m=OPEN_HOUR*60; m<=LAST_APPOINTMENT_HOUR*60; m+=SLOT_STEP) ore.push(m);
+  return ore;
 }
 
 function noteazaSub(html){
@@ -388,7 +388,7 @@ async function cautaPrimaZiCuLoc(dinZiua, reqId){
       const dataZi = new Date(y, m-1, d);
       if(!WORKING_DAYS.includes(dataZi.getDay())) continue;
 
-      const libera = orePosibile(zile[zi]).find(t=>oraValidaLocal(zile[zi], t, state.service.duration, ultimulStartPentru(state.service)));
+      const libera = orePosibile().find(t=>oraValidaLocal(zile[zi], t, state.service.duration, ultimulStartPentru(state.service)));
       if(libera===undefined) continue;
 
       const etichetaZi = dataZi.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long'});
