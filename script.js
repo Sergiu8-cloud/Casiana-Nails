@@ -1,6 +1,6 @@
 /* ---------------- DATA ---------------- */
 const SERVICES = [
-  {id:'clasica', name:'Manichiură clasică', price:100, priceLabel:'100 RON', duration:80, note:''},
+  {id:'clasica', name:'Manichiură clasica', price:100, priceLabel:'100 RON', duration:80, note:''},
   {id:'semi', name:'Manichiură semipermanentă', price:170, priceLabel:'170 RON', duration:110, note:''},
   {id:'gel', name:'Manichiură cu gel / întreținere', price:190, priceLabel:'190 RON', duration:130, note:'mărime 1/2 – 3/4'},
   {id:'slim', name:'Manichiură Slim', price:220, priceLabel:'220 RON', duration:140, note:''},
@@ -9,18 +9,10 @@ const SERVICES = [
 ];
 
 const GALLERY = [
-  {src:'images/gallery-1.jpg', tag:'Manichiură clasică', cap:'Nude clasic'},
-  {src:'images/gallery-2.jpg', tag:'Manichiură cu gel', cap:'gel'},
-  {src:'images/gallery-3.jpg', tag:'Manichiură semipermanentă', cap:'French modern'},
-  {src:'images/gallery-4.jpg', tag:'Manichiură Slim', cap:'Alb perlat'},
-  {src:'images/gallery-5.jpg', tag:'Manichiură semipermanentă', cap:'Ombré cu cristale'},
-  {src:'images/gallery-6.jpg', tag:'Manichiură cu gel', cap:'Roz glossy cu cristale'},
-  {src:'images/gallery-7.jpg', tag:'Manichiură Slim', cap:'Nude mat, unghii migdalate'},
-  {src:'images/gallery-8.jpg', tag:'Manichiură semipermanentă', cap:'Ombré alb sclipici'},
-  {src:'images/gallery-9.jpg', tag:'Manichiură clasică', cap:'Alb cu model personalizat'},
-  {src:'images/gallery-10.jpg', tag:'Manichiură cu gel', cap:'Verde glossy'},
-  {src:'images/gallery-11.jpg', tag:'Pedichiură semipermanentă', cap:'Taupe glossy'},
-  {src:'images/gallery-12.jpg', tag:'Manichiură Slim', cap:'Ombré roz'},
+  {src:'images/gallery-1.jpg', tag:'Manichiură semipermanentă' ,cap:''},
+  {src:'images/gallery-2.jpg', tag:'Manichiură slim' ,cap:''},
+  {src:'images/gallery-3.jpg', tag:'Manichiură gel' ,cap:''},
+  {src:'images/gallery-4.jpg', tag:'Migdala Slim', cap:''},
 ];
 
 const OPEN_HOUR = 10;          // 10:00 — prima programare
