@@ -1,0 +1,10 @@
+[33mcommit cc4d3a88232501f861fc1c266507a11e0dc845ae[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Sergiu8-cloud <plitocsergiu8@gmail.com>
+Date:   Tue Aug 18 04:36:37 2026 +0300
+
+    Text mai scurt la sectiunea de anulare
+    
+    Titlul devine simplu, iar explicatia se reduce la ce trebuie completat si
+    la efect: ora se elibereaza imediat.
+    
+    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
